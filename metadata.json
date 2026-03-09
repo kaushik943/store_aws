@@ -1,0 +1,5 @@
+{
+  "name": "FreshDash Grocery",
+  "description": "A lightning-fast grocery delivery platform inspired by Zepto and BigBasket.",
+  "requestFramePermissions": ["geolocation"]
+}

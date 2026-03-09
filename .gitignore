@@ -1,0 +1,37 @@
+# Frontend
+node_modules/
+build/
+dist/
+coverage/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+.gitkeep
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment
+!.env.example
+.env.local
+.env.*.local
+
+# Uploads (if sensitive)
+uploads/*
+!uploads/.gitkeep
