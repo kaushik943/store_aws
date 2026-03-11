@@ -26,7 +26,6 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     if (product && isOpen) {
       fetchReviews();
       setActiveTab('details');
-      // Prevent body scroll
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -58,6 +57,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
 
   if (!product) return null;
 
+  const isOutOfStock = product.out_of_stock || (product.stock !== undefined && product.stock <= 0);
   const discount = product.mrp && product.mrp > product.price
     ? Math.round(((product.mrp - product.price) / product.mrp) * 100)
     : 0;
@@ -70,7 +70,6 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -79,7 +78,6 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200]"
           />
 
-          {/* Modal — Bottom Sheet on Mobile, Centered on Desktop */}
           <motion.div
             initial={{ y: '100%', opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -88,7 +86,6 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
             className="fixed inset-x-0 bottom-0 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 z-[210] w-full md:w-[800px] lg:w-[900px] bg-white dark:bg-slate-900 rounded-t-[28px] md:rounded-[28px] flex flex-col overflow-hidden shadow-2xl"
             style={{ maxHeight: '90vh' }}
           >
-            {/* Header */}
             <div className="flex items-center justify-between p-4 md:p-5 border-b border-slate-100 dark:border-slate-800 shrink-0">
               <button
                 onClick={onClose}
@@ -105,30 +102,31 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
               </button>
             </div>
 
-            {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto">
               <div className="p-4 md:p-6 lg:p-8">
                 <div className="flex flex-col md:flex-row gap-6 lg:gap-10">
-                  {/* Image */}
                   <div className="w-full md:w-[45%] lg:w-1/2 shrink-0">
                     <div className="relative rounded-3xl overflow-hidden bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700/50 p-6 md:p-10 flex items-center justify-center aspect-square">
                       <img
                         src={product.image}
                         alt={product.name}
-                        className="w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal hover:scale-105 transition-transform duration-500"
+                        className={`w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal hover:scale-105 transition-transform duration-500 ${isOutOfStock ? 'grayscale opacity-60' : ''}`}
                         referrerPolicy="no-referrer"
                       />
-                      {discount > 0 && (
+                      {discount > 0 && !isOutOfStock && (
                         <div className="absolute top-4 left-4 bg-emerald-600 text-white text-[10px] md:text-xs font-black px-3 py-1.5 rounded-lg shadow-lg uppercase">
                           {discount}% OFF
+                        </div>
+                      )}
+                      {isOutOfStock && (
+                        <div className="absolute top-4 left-4 bg-slate-500 text-white text-[10px] md:text-xs font-black px-3 py-1.5 rounded-lg shadow-lg uppercase">
+                          Sold Out
                         </div>
                       )}
                     </div>
                   </div>
 
-                  {/* Info */}
                   <div className="flex flex-col flex-1 py-2">
-                    {/* Brand & Tags */}
                     <div className="flex flex-wrap gap-2 mb-4">
                       {product.brand && (
                         <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-800">
@@ -138,13 +136,13 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                       <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg">
                         {product.unit}
                       </span>
-                      {product.stock !== undefined && product.stock > 0 ? (
-                        <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-800">
-                          In Stock
-                        </span>
-                      ) : (
+                      {isOutOfStock ? (
                         <span className="text-[10px] font-black uppercase tracking-widest text-rose-600 bg-rose-50 dark:bg-rose-900/20 px-3 py-1.5 rounded-lg border border-rose-100 dark:border-rose-800">
                           Out of Stock
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-800">
+                          In Stock
                         </span>
                       )}
                     </div>
@@ -159,7 +157,6 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                       </p>
                     )}
 
-                    {/* Price */}
                     <div className="flex items-end gap-3 mb-6">
                       <span className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tighter">
                         ₹{product.price}
@@ -174,22 +171,13 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                       )}
                     </div>
 
-                    {/* Rating Bar */}
-                    {reviews.length > 0 && (
-                      <div className="flex items-center gap-2 mb-8">
-                        <div className="flex items-center gap-1">
-                          {[1, 2, 3, 4, 5].map(s => (
-                            <Star key={s} size={16} className={parseFloat(avgRating) >= s ? 'text-amber-400 fill-amber-400' : 'text-slate-200 fill-slate-200'} />
-                          ))}
-                        </div>
-                        <span className="text-sm font-black text-slate-700 dark:text-white">{avgRating}</span>
-                        <span className="text-xs text-slate-400">({reviews.length} reviews)</span>
-                      </div>
-                    )}
-
                     {/* Add to Cart CTA */}
                     <div className="mt-auto pt-6 border-t border-slate-100 dark:border-slate-800">
-                      {cartItem && cartItem.quantity > 0 ? (
+                      {isOutOfStock ? (
+                        <div className="w-full bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 py-4 md:py-5 rounded-2xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-700 cursor-not-allowed">
+                          Currently Out of Stock
+                        </div>
+                      ) : cartItem && cartItem.quantity > 0 ? (
                         <div className="flex items-center gap-4">
                           <div className="flex items-center bg-emerald-600 text-white rounded-2xl overflow-hidden shadow-xl shadow-emerald-500/20">
                             <button onClick={() => removeFromCart(product.id)} className="w-12 h-12 md:w-14 md:h-14 flex items-center justify-center hover:bg-emerald-700 transition-colors">
@@ -224,7 +212,6 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                 </div>
               </div>
 
-              {/* Tabs */}
               <div className="px-4 md:px-8 border-t border-slate-100 dark:border-slate-800">
                 <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 rounded-xl p-1 mt-4 mb-0">
                   {(['details', 'reviews'] as const).map((tab) => (
@@ -239,7 +226,6 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                 </div>
               </div>
 
-              {/* Tab Content */}
               <div className="p-4 md:p-8">
                 {activeTab === 'details' && (
                   <div className="space-y-5">
@@ -266,7 +252,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                       <div className="grid grid-cols-2 gap-3 bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl">
                         {product.mfg_date && (
                           <div>
-                            <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1">Mfg Date</p>
+                            <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1">Best Before</p>
                             <p className="text-sm font-bold dark:text-white">{product.mfg_date}</p>
                           </div>
                         )}
@@ -278,15 +264,11 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                         )}
                       </div>
                     )}
-                    {!product.description && !product.highlights && (
-                      <p className="text-sm text-slate-400 italic text-center py-8">No additional product details available.</p>
-                    )}
                   </div>
                 )}
 
                 {activeTab === 'reviews' && (
                   <div className="space-y-5 pb-8">
-                    {/* Write Review */}
                     {user ? (
                       <form onSubmit={handleSubmitReview} className="bg-slate-50 dark:bg-slate-800 p-5 rounded-2xl">
                         <h4 className="font-black text-sm text-slate-800 dark:text-white mb-4 uppercase tracking-wider">Rate this product</h4>
@@ -329,27 +311,25 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                       </div>
                     )}
 
-                    {/* Reviews List */}
                     {reviews.length === 0 ? (
-                      <p className="text-center text-slate-400 text-sm py-8">No reviews yet. Be the first to review!</p>
+                      <p className="center text-slate-400 text-sm py-8 text-center italic">No reviews yet. Be the first to review!</p>
                     ) : (
                       reviews.map(review => (
                         <div key={review.id} className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-700">
                           <div className="flex items-center gap-3 mb-2">
-                            <div className="w-9 h-9 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 font-black text-sm uppercase">
+                            <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-xs font-black uppercase">
                               {review.user_name[0]}
                             </div>
                             <div>
-                              <p className="font-black text-sm text-slate-800 dark:text-white">{review.user_name}</p>
-                              <p className="text-[10px] text-slate-400">{new Date(review.created_at).toLocaleDateString()}</p>
-                            </div>
-                            <div className="ml-auto flex items-center gap-0.5">
-                              {[...Array(5)].map((_, i) => (
-                                <Star key={i} size={12} className={i < review.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-200 fill-slate-200'} />
-                              ))}
+                              <p className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-tight">{review.user_name}</p>
+                              <div className="flex items-center gap-1">
+                                {[1, 2, 3, 4, 5].map(s => (
+                                  <Star key={s} size={10} className={review.rating >= s ? 'text-amber-400 fill-amber-400' : 'text-slate-200 fill-slate-200'} />
+                                ))}
+                              </div>
                             </div>
                           </div>
-                          <p className="text-sm text-slate-600 dark:text-slate-400">{review.comment}</p>
+                          <p className="text-xs text-slate-600 dark:text-slate-400 ml-11">{review.comment}</p>
                         </div>
                       ))
                     )}

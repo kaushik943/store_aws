@@ -16,10 +16,11 @@ interface HomeProps {
   viewMode?: 'home' | 'categories';
   setView: (view: any) => void;
   user: User | null;
+  searchQuery?: string;
 }
 
 export const Home: React.FC<HomeProps> = ({
-  products, categories, selectedCategory, setSelectedCategory, cart, addToCart, removeFromCart, setView, user, viewMode = 'home'
+  products, categories, selectedCategory, setSelectedCategory, cart, addToCart, removeFromCart, setView, user, searchQuery, viewMode = 'home'
 }) => {
   const rootCategories = categories.filter(c => !c.parent_id);
   const selectedCatObj = categories.find(c => c.id === selectedCategory);
@@ -27,10 +28,29 @@ export const Home: React.FC<HomeProps> = ({
   // If selected category is a subcategory, find its parent
   const parentCat = selectedCatObj?.parent_id ? categories.find(c => c.id === selectedCatObj.parent_id) : selectedCatObj;
   const subCategories = parentCat ? categories.filter(c => c.parent_id === parentCat.id) : [];
+  const parentCategoryProductIds = new Set(subCategories.map(c => c.id));
+
+  const matchesSelectedCategory = (product: Product) => {
+    if (!selectedCategory) {
+      return true;
+    }
+    if (selectedCategory === parentCat?.id) {
+      return product.category_id === selectedCategory || parentCategoryProductIds.has(product.category_id);
+    }
+    return product.category_id === selectedCategory;
+  };
 
   const [showAllCats, setShowAllCats] = useState(false);
   const [selectedProductForModal, setSelectedProductForModal] = useState<Product | null>(null);
+  const [catLimit, setCatLimit] = useState(5);
   const contentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleResize = () => setCatLimit(window.innerWidth < 640 ? 7 : 5);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const slides = [
     {
@@ -111,7 +131,7 @@ export const Home: React.FC<HomeProps> = ({
           </div>
           <span className="text-[10px] sm:text-xs text-slate-500 font-black uppercase tracking-widest bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
             {selectedCategory
-              ? products.filter(p => p.category_id === selectedCategory || (selectedCategory === parentCat?.id && categories.filter(c => c.parent_id === parentCat?.id).map(c => c.id).includes(p.category_id))).length
+              ? products.filter(matchesSelectedCategory).length
               : products.length
             } Items
           </span>
@@ -141,7 +161,7 @@ export const Home: React.FC<HomeProps> = ({
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 lg:gap-5">
           {(selectedCategory
-            ? products.filter(p => p.category_id === selectedCategory || (selectedCategory === parentCat?.id && categories.filter(c => c.parent_id === parentCat?.id).map(c => c.id).includes(p.category_id)))
+            ? products.filter(matchesSelectedCategory)
             : products
           ).map(product => (
             <ProductCard
@@ -205,6 +225,60 @@ export const Home: React.FC<HomeProps> = ({
     </div>
   );
 
+
+
+  if (searchQuery) {
+    return (
+      <main className="flex-1 min-w-0" ref={contentRef}>
+        <div className="px-4 py-8">
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-4">
+              <div className="w-2.5 h-10 bg-emerald-500 rounded-full shadow-lg shadow-emerald-500/40"></div>
+              <div>
+                <h3 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white italic tracking-tighter uppercase">Search Results</h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Found {products.length} items for "{searchQuery}"</p>
+              </div>
+            </div>
+          </div>
+
+          {products.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-5">
+              {products.map(product => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  cartItem={cart.find(item => item.id === product.id)}
+                  addToCart={addToCart}
+                  removeFromCart={removeFromCart}
+                  onClick={setSelectedProductForModal}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
+              <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-400">
+                <Package size={40} strokeWidth={1} />
+              </div>
+              <div>
+                <h4 className="text-lg font-black text-slate-900 dark:text-white uppercase italic tracking-tight">No products found</h4>
+                <p className="text-xs text-slate-500 font-bold max-w-[200px] mx-auto mt-1">Try searching for something else or browse categories.</p>
+              </div>
+            </div>
+          )}
+        </div>
+        <ProductDetailsModal
+          isOpen={selectedProductForModal !== null}
+          onClose={() => setSelectedProductForModal(null)}
+          product={selectedProductForModal}
+          cartItem={selectedProductForModal ? cart.find(item => item.id === selectedProductForModal.id) : undefined}
+          addToCart={addToCart}
+          removeFromCart={removeFromCart}
+          user={user}
+        />
+      </main>
+    );
+  }
+
   if (viewMode === 'categories') {
     return (
       <main className="flex-1 min-w-0">
@@ -213,6 +287,15 @@ export const Home: React.FC<HomeProps> = ({
             {renderCategoriesGrid()}
           </div>
         )}
+        <ProductDetailsModal
+          isOpen={selectedProductForModal !== null}
+          onClose={() => setSelectedProductForModal(null)}
+          product={selectedProductForModal}
+          cartItem={selectedProductForModal ? cart.find(item => item.id === selectedProductForModal.id) : undefined}
+          addToCart={addToCart}
+          removeFromCart={removeFromCart}
+          user={user}
+        />
       </main>
     );
   }
@@ -299,6 +382,58 @@ export const Home: React.FC<HomeProps> = ({
     );
   }
 
+  if (searchQuery) {
+    return (
+      <main className="flex-1 min-w-0" ref={contentRef}>
+        <div className="px-4 py-8">
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-4">
+              <div className="w-2.5 h-10 bg-emerald-500 rounded-full shadow-lg shadow-emerald-500/40"></div>
+              <div>
+                <h3 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white italic tracking-tighter uppercase">Search Results</h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Found {products.length} items for "{searchQuery}"</p>
+              </div>
+            </div>
+          </div>
+
+          {products.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-5">
+              {products.map(product => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  cartItem={cart.find(item => item.id === product.id)}
+                  addToCart={addToCart}
+                  removeFromCart={removeFromCart}
+                  onClick={setSelectedProductForModal}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
+              <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-400">
+                <Package size={40} strokeWidth={1} />
+              </div>
+              <div>
+                <h4 className="text-lg font-black text-slate-900 dark:text-white uppercase italic italic tracking-tight">No products found</h4>
+                <p className="text-xs text-slate-500 font-bold max-w-[200px] mx-auto mt-1">Try searching for something else or browse categories.</p>
+              </div>
+            </div>
+          )}
+        </div>
+        <ProductDetailsModal
+          isOpen={selectedProductForModal !== null}
+          onClose={() => setSelectedProductForModal(null)}
+          product={selectedProductForModal}
+          cartItem={selectedProductForModal ? cart.find(item => item.id === selectedProductForModal.id) : undefined}
+          addToCart={addToCart}
+          removeFromCart={removeFromCart}
+          user={user}
+        />
+      </main>
+    );
+  }
+
   return (
     <main className="flex-1 min-w-0" ref={contentRef}>
       <div className="block">
@@ -350,8 +485,8 @@ export const Home: React.FC<HomeProps> = ({
             </button>
           </div>
 
-          <div className={`grid grid-cols-4 sm:grid-cols-5 lg:grid-cols-6 gap-x-3 gap-y-6 md:gap-x-6 md:gap-y-10 transition-all duration-500 px-2 ${showAllCats ? '' : 'max-h-[220px] sm:max-h-[300px] overflow-hidden'}`}>
-            {rootCategories.slice(0, 5).map(cat => (
+          <div className={`grid grid-cols-4 sm:grid-cols-5 lg:grid-cols-6 gap-x-3 gap-y-6 md:gap-x-6 md:gap-y-10 transition-all duration-500 px-2 ${showAllCats ? '' : 'max-h-[350px] sm:max-h-[300px] overflow-hidden'}`}>
+            {rootCategories.slice(0, catLimit).map(cat => (
               <div
                 key={cat.id}
                 onClick={() => handleCategoryClick(cat.id)}
@@ -383,7 +518,7 @@ export const Home: React.FC<HomeProps> = ({
                 View More
               </span>
             </div>
-            {showAllCats && rootCategories.slice(5).map(cat => (
+            {showAllCats && rootCategories.slice(catLimit).map(cat => (
               <div
                 key={cat.id}
                 onClick={() => handleCategoryClick(cat.id)}
@@ -434,7 +569,7 @@ export const Home: React.FC<HomeProps> = ({
               </button>
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5">
-              {products.filter(p => p.category_id === selectedCategory).map(product => (
+              {products.filter(matchesSelectedCategory).map(product => (
                 <ProductCard
                   key={product.id}
                   product={product}

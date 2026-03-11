@@ -111,12 +111,12 @@ export const Footer: React.FC<FooterProps> = ({ categories, setView, setSelected
             <Zap size={18} fill="currentColor" />
           </div>
           <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">
-            © 2026 AK  AKmedia Pvt Limitedd.<br />All rights reserved.
+            © 2026 AK<br />All rights reserved.
           </p>
         </div>
 
         <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] text-center md:text-right">
-          Developed by <button onClick={() => { setView('developer'); window.scrollTo(0, 0); }} className="text-emerald-600 hover:text-emerald-500 transition-colors uppercase font-black">AKmedia Pvt Limited</button>
+          Developed by <button onClick={() => { setView('developer'); window.scrollTo(0, 0); }} className="text-emerald-600 hover:text-emerald-500 transition-colors uppercase font-black">AK</button>
         </p>
       </div>
     </footer>

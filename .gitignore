@@ -3,6 +3,8 @@ node_modules/
 build/
 dist/
 coverage/
+front-web/node_modules/
+front-web/dist/
 
 # Python
 __pycache__/
@@ -35,3 +37,6 @@ npm-debug.log*
 # Uploads (if sensitive)
 uploads/*
 !uploads/.gitkeep
+
+.vercel
+.serverless

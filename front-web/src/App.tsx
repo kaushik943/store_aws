@@ -28,9 +28,15 @@ export default function App() {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [view, setView] = useState<'home' | 'categories' | 'admin' | 'executive' | 'profile' | 'auth' | 'privacy' | 'terms' | 'help' | 'about' | 'services' | 'developer'>(() => {
     const saved = localStorage.getItem('currentView');
-    const savedUser = localStorage.getItem('user');
+    const savedUserStr = localStorage.getItem('user');
+    const savedUser = savedUserStr ? JSON.parse(savedUserStr) : null;
+
     if (!savedUser && (saved === 'admin' || saved === 'executive' || saved === 'profile')) {
       return 'home';
+    }
+    if (savedUser) {
+      if (saved === 'admin' && savedUser.role !== 'admin') return 'home';
+      if (saved === 'executive' && savedUser.role !== 'executive' && savedUser.role !== 'admin') return 'home';
     }
     return (saved as any) || 'home';
   });
@@ -44,6 +50,7 @@ export default function App() {
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [isCartInitialized, setIsCartInitialized] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [userAddresses, setUserAddresses] = useState<any[]>([]);
@@ -171,7 +178,7 @@ export default function App() {
         if (user?.street_address && !data.find(a => a.street_address === user.street_address)) {
           addresses.unshift({
             id: 0,
-            name: 'Home (Signup Address)',
+            name: 'Home',
             street_address: user.street_address,
             city: user.city,
             state: user.state,
@@ -197,7 +204,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    fetchProducts(selectedCategory || undefined);
+    // Only fetch products by category if we're not currently performing a search
+    if (!searchQuery) {
+      fetchProducts(selectedCategory || undefined);
+    }
   }, [selectedCategory]);
 
   const fetchCategories = async () => {
@@ -215,6 +225,8 @@ export default function App() {
 
   const handleLogout = () => {
     setUser(null);
+    setCart([]);
+    setIsCartInitialized(false);
     localStorage.removeItem('user');
     localStorage.removeItem('currentView');
     localStorage.removeItem('adminTab');
@@ -223,18 +235,39 @@ export default function App() {
     setIsCartOpen(false);
   };
 
+  useEffect(() => {
+    if (!user) {
+      setCart([]);
+      setIsCartInitialized(false);
+      return;
+    }
+    setIsCartInitialized(false);
+  }, [user?.token]);
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!searchQuery) {
+    if (!searchQuery.trim()) {
       fetchProducts(selectedCategory || undefined);
       return;
     }
-    const res = await fetch(`/api/products/search?q=${searchQuery}`);
-    const data = await res.json();
-    setProducts(data);
+    // Result handling is in home view mode of Home.tsx
+    if (view !== 'home') navigate('home');
+    setSelectedCategory(null);
+    try {
+      const res = await fetch(`/api/products/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      if (res.ok) {
+        const data = await res.json();
+        setProducts(data);
+      }
+    } catch (e) {
+      console.error("Search failed:", e);
+    }
   };
 
   const addToCart = (product: Product) => {
+    if (product.out_of_stock || (product.stock !== undefined && product.stock <= 0)) {
+      return;
+    }
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id);
       if (existing) {
@@ -259,22 +292,23 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (user && cart.length > 0) {
-      const syncCart = async () => {
-        try {
-          await fetch('/api/user/cart/sync', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': user.token || ''
-            },
-            body: JSON.stringify(cart.map(item => ({ product_id: item.id, quantity: item.quantity })))
-          });
-        } catch (e) { console.error('Sync failed', e); }
-      };
-      syncCart();
+    if (!user || !isCartInitialized) {
+      return;
     }
-  }, [cart, user]);
+    const syncCart = async () => {
+      try {
+        await fetch('/api/user/cart/sync', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': user.token || ''
+          },
+          body: JSON.stringify(cart.map(item => ({ product_id: item.id, quantity: item.quantity })))
+        });
+      } catch (e) { console.error('Sync failed', e); }
+    };
+    syncCart();
+  }, [cart, user, isCartInitialized]);
 
   const fetchUserCart = async () => {
     if (!user || products.length === 0) return;
@@ -288,16 +322,17 @@ export default function App() {
           const product = products.find(p => p.id === item.product_id);
           return product ? { ...product, quantity: item.quantity } : null;
         }).filter(Boolean) as CartItem[];
-        if (fullItems.length > 0) setCart(fullItems);
+        setCart(fullItems);
       }
     } catch (e) { console.error(e); }
+    finally { setIsCartInitialized(true); }
   };
 
   useEffect(() => {
-    if (user && products.length > 0 && cart.length === 0) {
+    if (user && products.length > 0 && !isCartInitialized) {
       fetchUserCart();
     }
-  }, [user, products]);
+  }, [user, products, isCartInitialized]);
 
   const cartTotal = useMemo(() => cart.reduce((total, item) => total + item.price * item.quantity, 0), [cart]);
   const cartCount = useMemo(() => cart.reduce((count, item) => count + item.quantity, 0), [cart]);
@@ -321,7 +356,15 @@ export default function App() {
     }
   }, [cart.length, cartStep]);
 
-  const handleCheckout = async (checkoutData: { locationId?: number, deliverySlotId?: number, couponId?: number, discountAmount?: number, order_type?: string }) => {
+  const handleCheckout = async (checkoutData: {
+    locationId?: number | null,
+    pickupLocationId?: number | null,
+    deliverySlotId?: number | null,
+    pickupSlotId?: number | null,
+    couponId?: number | null,
+    discountAmount?: number | null,
+    order_type?: string
+  }) => {
     if (!user) {
       navigate('auth');
       return;
@@ -338,10 +381,12 @@ export default function App() {
           items: cart,
           total: cartTotal,
           address_id: checkoutData.locationId || null,
+          pickup_location_id: checkoutData.pickupLocationId || null,
           delivery_slot_id: checkoutData.deliverySlotId || null,
+          pickup_slot_id: checkoutData.pickupSlotId || null,
           coupon_id: checkoutData.couponId || null,
           discount_amount: checkoutData.discountAmount || 0,
-          order_type: checkoutData.order_type || 'pickup'
+          order_type: checkoutData.order_type || 'delivery'
         })
       });
       if (res.ok) {
@@ -353,8 +398,14 @@ export default function App() {
           const nextView = user.role === 'admin' ? 'admin' : (user.role === 'executive' ? 'executive' : 'profile');
           navigate(nextView as any);
         }, 3000);
+      } else {
+        const errorData = await res.json();
+        alert(`Failed to place order: ${errorData.error || errorData.detail || 'Unknown error'}`);
       }
-    } catch (e) { alert('Failed to place order'); }
+    } catch (e) {
+      console.error(e);
+      alert('Network error: Failed to reach the server. Please check your connection.');
+    }
   };
 
 
@@ -382,6 +433,7 @@ export default function App() {
         setView={(v) => navigate(v as any)}
         viewMode={view === 'categories' ? 'categories' : 'home'}
         user={user}
+        searchQuery={searchQuery}
       />
     );
   };
@@ -425,59 +477,67 @@ export default function App() {
           animate={{ opacity: 1 }}
           className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 transition-colors w-full overflow-x-hidden relative"
         >
-          <Header
-            user={user}
-            cartCount={cartCount}
-            cartTotal={cartTotal}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            handleSearch={handleSearch}
-            setIsSidebarOpen={setIsSidebarOpen}
-            setIsCartOpen={setIsCartOpen}
-            setView={(v) => navigate(v as any)}
-            setAuthMode={setAuthMode}
-            userAddresses={userAddresses}
-            selectedLocationId={selectedLocationId}
-            setSelectedLocationId={setSelectedLocationId}
-            setSelectedCategory={setSelectedCategory}
-            handleLogout={handleLogout}
-          />
-
-          <div className="max-w-7xl mx-auto px-4 py-8 flex gap-8 items-start relative">
-            <Sidebar
-              categories={categories}
-              selectedCategory={selectedCategory}
-              setSelectedCategory={(id) => {
-                setSelectedCategory(id);
-                setIsSidebarOpen(false);
-                if (view !== 'home' && view !== 'categories') navigate('home');
-              }}
-              isSidebarOpen={isSidebarOpen}
-              setIsSidebarOpen={setIsSidebarOpen}
+          {!(view === 'admin' || view === 'executive') && (
+            <Header
               user={user}
+              cartCount={cartCount}
+              cartTotal={cartTotal}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              handleSearch={handleSearch}
+              setIsSidebarOpen={setIsSidebarOpen}
+              setIsCartOpen={setIsCartOpen}
+              setView={(v) => navigate(v as any)}
+              setAuthMode={setAuthMode}
+              userAddresses={userAddresses}
+              selectedLocationId={selectedLocationId}
+              setSelectedLocationId={setSelectedLocationId}
+              setSelectedCategory={setSelectedCategory}
               handleLogout={handleLogout}
             />
+          )}
+
+          <div className={`${(view === 'admin' || view === 'executive') ? 'w-full px-4 py-8' : 'max-w-7xl mx-auto px-4 py-8 flex gap-8 items-start relative'}`}>
+            {!(view === 'admin' || view === 'executive') && (
+              <Sidebar
+                categories={categories}
+                selectedCategory={selectedCategory}
+                setSelectedCategory={(id) => {
+                  setSelectedCategory(id);
+                  setIsSidebarOpen(false);
+                  if (view !== 'home' && view !== 'categories') navigate('home');
+                }}
+                isSidebarOpen={isSidebarOpen}
+                setIsSidebarOpen={setIsSidebarOpen}
+                user={user}
+                handleLogout={handleLogout}
+              />
+            )}
 
             <main className="flex-1 min-w-0">
               {renderView()}
             </main>
           </div>
 
-          <Footer categories={categories} setView={(v) => navigate(v as any)} setSelectedCategory={setSelectedCategory} />
+          {!(view === 'admin' || view === 'executive') && (
+            <Footer categories={categories} setView={(v) => navigate(v as any)} setSelectedCategory={setSelectedCategory} />
+          )}
 
-          <BottomNav
-            view={view}
-            setView={(v) => navigate(v as any)}
-            user={user}
-            setIsSidebarOpen={setIsSidebarOpen}
-            setSelectedCategory={setSelectedCategory}
-            cartCount={cartCount}
-            openCart={() => setIsCartOpen(true)}
-          />
+          {!(view === 'admin' || view === 'executive') && (
+            <BottomNav
+              view={view}
+              setView={(v) => navigate(v as any)}
+              user={user}
+              setIsSidebarOpen={setIsSidebarOpen}
+              setSelectedCategory={setSelectedCategory}
+              cartCount={cartCount}
+              openCart={() => setIsCartOpen(true)}
+            />
+          )}
 
           <CartDrawer
             isOpen={isCartOpen}
-            onClose={() => window.history.back()}
+            onClose={() => setIsCartOpen(false)}
             cart={cart}
             cartTotal={cartTotal}
             cartCount={cartCount}

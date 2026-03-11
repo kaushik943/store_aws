@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, ShoppingCart, User as UserIcon, Clock, MapPin, Menu, ChevronRight, LayoutDashboard, Sun, Moon, LayoutGrid, MoreVertical, LogOut } from 'lucide-react';
+import { Search, ShoppingCart, User as UserIcon, Clock, MapPin, Menu, ChevronRight, LayoutDashboard, Sun, Moon, LayoutGrid, MoreVertical, LogOut, Package } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { User } from '../../types';
 
@@ -51,7 +51,7 @@ export const Header: React.FC<HeaderProps> = ({
     const fetchSuggestions = async () => {
       if (searchQuery.trim().length > 0) {
         try {
-          const res = await fetch(`/api/products/search?q=${searchQuery}`);
+          const res = await fetch(`/api/products/search?q=${encodeURIComponent(searchQuery)}`);
           if (res.ok) {
             const data = await res.json();
             const q = searchQuery.toLowerCase();
@@ -288,6 +288,16 @@ export const Header: React.FC<HeaderProps> = ({
                       <button onClick={() => { setIsUserMenuOpen(false); setView('profile'); }} className="w-full text-left p-3.5 rounded-2xl flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold transition-all text-xs uppercase tracking-tight">
                         <UserIcon size={16} /> My Account
                       </button>
+                      {user?.role === 'admin' && (
+                        <button onClick={() => { setIsUserMenuOpen(false); setView('admin'); }} className="w-full text-left p-3.5 rounded-2xl flex items-center gap-3 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 font-bold transition-all text-xs uppercase tracking-tight">
+                          <LayoutDashboard size={16} /> Admin Panel
+                        </button>
+                      )}
+                      {(user?.role === 'executive' || user?.role === 'admin') && (
+                        <button onClick={() => { setIsUserMenuOpen(false); setView('executive'); }} className="w-full text-left p-3.5 rounded-2xl flex items-center gap-3 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 font-bold transition-all text-xs uppercase tracking-tight">
+                          <Package size={16} /> Fulfillment Hub
+                        </button>
+                      )}
                       <button onClick={() => { setIsUserMenuOpen(false); handleLogout(); }} className="w-full text-left p-3.5 rounded-2xl flex items-center gap-3 hover:bg-rose-50 dark:hover:bg-rose-900/10 text-rose-500 font-extrabold transition-all text-xs uppercase tracking-tight">
                         <LogOut size={16} /> Logout
                       </button>
@@ -328,7 +338,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Mobile Search Bar at bottom of header */}
         <div className="sm:hidden px-4 pb-3">
-          <div className="relative">
+          <form onSubmit={handleSearch} className="relative">
             <input
               type="text"
               placeholder='Search "chocolate", "milk", "bread"...'
@@ -337,7 +347,7 @@ export const Header: React.FC<HeaderProps> = ({
               onChange={(e) => setSearchQuery(e.target.value)}
             />
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-          </div>
+          </form>
         </div>
       </header>
     </>

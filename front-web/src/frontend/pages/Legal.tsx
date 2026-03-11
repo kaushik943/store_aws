@@ -42,7 +42,7 @@ export const Legal: React.FC<LegalProps> = ({ page, setView }) => {
       sections: [
         { subtitle: "Our Mission", body: "At AK Store, we believe that grocery shopping should be effortless and reliable. Our mission is to deliver the freshest products to your doorstep consistently." },
         { subtitle: "Speed & Quality", body: "We've built a hyper-local delivery network that ensures your milk is cold and your vegetables are crisp when they reach you. We prioritize quality over everything." },
-        { subtitle: "Powered by AKmedia", body: "AK Store is a technological marvel developed by AKmedia Pvt Limited, combining state-of-the-art inventory management with a seamless user experience." }
+        { subtitle: "Powered by AKmedia", body: "AK Store is a technological marvel developed by AK, combining state-of-the-art inventory management with a seamless user experience." }
       ]
     },
     services: {

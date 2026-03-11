@@ -1,0 +1,20 @@
+{
+  "framework": "vite",
+  "installCommand": "npm install",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://23tkt4cqz3.execute-api.ap-south-1.amazonaws.com/prod/api/:path*"
+    },
+    {
+      "source": "/uploads/:path*",
+      "destination": "https://23tkt4cqz3.execute-api.ap-south-1.amazonaws.com/prod/uploads/:path*"
+    },
+    {
+      "source": "/((?!api/|uploads/).*)",
+      "destination": "/index.html"
+    }
+  ]
+}

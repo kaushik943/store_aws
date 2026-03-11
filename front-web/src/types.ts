@@ -24,6 +24,24 @@ export interface UserAddress {
   is_default: boolean;
 }
 
+export interface PickupLocation {
+  id: number;
+  name: string;
+  address: string;
+  city: string;
+  pincode: string;
+  is_active: boolean;
+}
+
+export interface PickupSlot {
+  id: number;
+  location_id: number;
+  name: string;
+  start_time: string;
+  end_time: string;
+  is_active: boolean;
+}
+
 export interface Order {
   id: number;
   user_id: number;
@@ -33,7 +51,13 @@ export interface Order {
   created_at: string;
   address_id?: number | null;
   address?: string | null;
+  user_phone?: string;
+  slot_info?: string;
   discount_amount: number;
+  order_type: 'delivery' | 'pickup';
+  delivery_fee: number;
+  pickup_location_id?: number | null;
+  pickup_slot_id?: number | null;
   order_items?: OrderItemDetail[];
 }
 
@@ -72,6 +96,7 @@ export interface Product {
   product_id?: string;
   mfg_date?: string;
   country_of_origin?: string;
+  out_of_stock?: boolean;
 }
 
 export interface Review {

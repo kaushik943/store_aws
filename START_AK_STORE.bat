@@ -1,48 +1,42 @@
 @echo off
-set "PROJECT_ROOT=%~dp0"
-cd /d "%PROJECT_ROOT%"
+setlocal
+set "ROOT=%~dp0"
+cd /d "%ROOT%"
 
-:: Kill any existing processes on ports to prevent errors
-taskkill /F /IM node.exe /T >nul 2>&1
-taskkill /F /PID 15812 >nul 2>&1
-taskkill /F /PID 8296 >nul 2>&1
+echo ==========================================
+echo AK STORE - LOCAL START
+echo ==========================================
+echo.
 
-echo ====================================================
-0. Initializing Database with Seed Data...
-echo ====================================================
-call venv\Scripts\activate.bat
-python -m backend.seed
+if not exist "venv\Scripts\python.exe" (
+  echo Missing Python virtual environment at venv\Scripts\python.exe
+  echo Create or restore the venv before starting the project.
+  pause
+  exit /b 1
+)
+
+if not exist "front-web\package.json" (
+  echo Missing frontend app at front-web\package.json
+  pause
+  exit /b 1
+)
+
+echo Starting backend on http://localhost:8000
+start "AK Store Backend" cmd /k "cd /d %ROOT% && venv\Scripts\python.exe -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload"
+
+timeout /t 3 /nobreak >nul
+
+echo Starting frontend on http://localhost:5173
+start "AK Store Frontend" cmd /k "cd /d %ROOT%front-web && npm.cmd run dev:frontend"
 
 echo.
-echo ====================================================
-1. Starting Backend and Web Store (Vite)...
-echo ====================================================
-start "AK STORE - Web & Backend" cmd /k "npm run dev"
-
+echo Frontend: http://localhost:5173
+echo Backend:  http://localhost:8000
+echo Health:   http://localhost:8000/api/health
 echo.
-echo ====================================================
-2. Waiting for Android Device via USB...
-echo PLEASE CONNECT YOUR PHONE NOW!
-echo ====================================================
-:: Use the SDK path we found earlier
-set "ADB=C:\AndroidSDK\platform-tools\adb.exe"
-%ADB% wait-for-device
-echo Device Found! Setting up port forwarding...
-%ADB% reverse tcp:8000 tcp:8000
-%ADB% reverse tcp:8081 tcp:8081
-
+echo Admin Login: 9999999999 / admin123
+echo Executive Login: 8888888888 / exec123
+echo Customer Login: 8210282102 / aditya123
 echo.
-echo ====================================================
-3. Starting Metro Bundler...
-echo ====================================================
-start "AK STORE - Metro" cmd /k "cd Akstore_app && npm start"
-
-echo.
-echo ====================================================
-4. Building and Running App on Phone...
-echo ====================================================
-start "AK STORE - Android Build" cmd /k "cd Akstore_app && start-mobile.bat"
-
-echo.
-echo All processes started! You can close this window.
+echo Keep both new terminal windows open while testing locally.
 pause

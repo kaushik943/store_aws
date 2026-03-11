@@ -25,7 +25,6 @@ class PickupLocationBase(BaseModel):
     name: str
     address: str
     city: str
-    state: str
     pincode: str
     is_active: bool = True
 
@@ -130,6 +129,7 @@ class ProductCreate(BaseModel):
     category_id: int
     subcategory_id: Optional[int] = None
     stock: Optional[int] = 0
+    out_of_stock: Optional[bool] = False
     # Extended fields
     brand: Optional[str] = None
     catch: Optional[str] = None
@@ -142,6 +142,13 @@ class ProductCreate(BaseModel):
     seller_name: Optional[str] = "AK Store Retail"
     customer_care_details: Optional[str] = None
     disclaimer: Optional[str] = None
+
+class ProductUpdateInline(BaseModel):
+    price: Optional[float] = None
+    cost_price: Optional[float] = None
+    mrp: Optional[float] = None
+    stock: Optional[int] = None
+    out_of_stock: Optional[bool] = None
 
 class ReviewCreate(BaseModel):
     rating: int
@@ -171,6 +178,21 @@ class DeliverySlotResponse(DeliverySlotCreate):
     class Config:
         from_attributes = True
 
+class PickupSlotBase(BaseModel):
+    location_id: int
+    name: str
+    start_time: str
+    end_time: str
+    is_active: bool = True
+
+class PickupSlotCreate(PickupSlotBase):
+    pass
+
+class PickupSlotResponse(PickupSlotBase):
+    id: int
+    class Config:
+        from_attributes = True
+
 class OrderItemSchema(BaseModel):
     id: int
     quantity: int
@@ -182,4 +204,8 @@ class OrderCreate(BaseModel):
     address_id: Optional[int] = None
     coupon_id: Optional[int] = None
     delivery_slot_id: Optional[int] = None
+    pickup_location_id: Optional[int] = None
+    pickup_slot_id: Optional[int] = None
+    order_type: str = "delivery"
     discount_amount: Optional[float] = 0.0
+    delivery_fee: Optional[float] = 0.0

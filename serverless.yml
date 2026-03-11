@@ -1,0 +1,116 @@
+org: akstorerxl
+app: ak-store
+service: ak-store-api
+useDotenv: true
+
+custom:
+  uploadsBucketName: ${self:service}-${sls:stage}-${aws:accountId}-uploads
+  pythonRequirements:
+    fileName: backend/requirements.txt
+    dockerizePip: true
+    slim: false
+    strip: false
+    layer: false
+    useDownloadCache: true
+    useStaticCache: true
+
+provider:
+  name: aws
+  runtime: python3.9
+  region: ap-south-1
+  stage: ${opt:stage, 'prod'}
+  memorySize: 512
+  timeout: 29
+  apiGateway:
+    binaryMediaTypes:
+      - multipart/form-data
+      - image/png
+      - image/jpeg
+      - image/webp
+      - image/gif
+      - image/svg+xml
+      - application/octet-stream
+  
+  # Environment Variables
+  environment:
+    SMTP_EMAIL: ${env:SMTP_EMAIL, 'akstorerxl@gmail.com'}
+    SMTP_PASSWORD: ${env:SMTP_PASSWORD, ''}
+    SECRET_KEY: ${env:SECRET_KEY, 'replace-this-in-production'}
+    UPLOADS_BUCKET: ${self:custom.uploadsBucketName}
+  
+  # IAM permissions for Lambda
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:*
+          Resource: "*"
+        - Effect: Allow
+          Action:
+            - logs:*
+          Resource: "*"
+        - Effect: Allow
+          Action:
+            - s3:PutObject
+            - s3:GetObject
+          Resource: !Sub '${UploadsBucket.Arn}/*'
+
+functions:
+  api:
+    handler: backend.main.handler
+    events:
+      - http:
+          path: /{proxy+}
+          method: ANY
+          cors: true
+      - http:
+          path: /
+          method: ANY
+          cors: true
+
+# Plugins
+plugins:
+  - serverless-python-requirements
+
+# Package configuration
+package:
+  individually: true
+  patterns:
+    - '!node_modules/**'
+    - '!venv/**'
+    - '!.git/**'
+    - '!.env.example'
+    - 'backend/**'
+    - 'uploads/**'
+
+resources:
+  Resources:
+    UploadsBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:custom.uploadsBucketName}
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: false
+          BlockPublicPolicy: false
+          IgnorePublicAcls: false
+          RestrictPublicBuckets: false
+        OwnershipControls:
+          Rules:
+            - ObjectOwnership: BucketOwnerPreferred
+    UploadsBucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket: !Ref UploadsBucket
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Sid: PublicReadForUploads
+              Effect: Allow
+              Principal: '*'
+              Action: s3:GetObject
+              Resource: !Sub '${UploadsBucket.Arn}/*'
+  Outputs:
+    UploadsBucketName:
+      Value: !Ref UploadsBucket
+      Description: 'S3 bucket for uploaded images'
