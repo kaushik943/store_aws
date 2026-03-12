@@ -2,11 +2,13 @@ import os
 import random
 import hashlib
 import smtplib
+import json
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
 from typing import List, Optional
 import uuid
 from email.mime.text import MIMEText
+import boto3
 
 from fastapi import FastAPI, Depends, HTTPException, Header, File, UploadFile
 from fastapi.responses import JSONResponse
@@ -160,6 +162,42 @@ def send_otp_email(email: str, otp: str) -> bool:
     print(f"[DEV MODE] OTP for {email} is {otp}")
     return True
 
+
+def trigger_otp_lambda(phone: str, email: str) -> bool:
+    function_name = os.getenv("OTP_LAMBDA_FUNCTION", "").strip()
+    if not function_name:
+        return False
+
+    try:
+        payload = json.dumps({"phone": phone, "email": email}).encode("utf-8")
+        response = boto3.client("lambda", region_name=os.getenv("AWS_REGION", "ap-south-1")).invoke(
+            FunctionName=function_name,
+            InvocationType="RequestResponse",
+            Payload=payload,
+        )
+        response_payload = json.loads(response["Payload"].read().decode("utf-8") or "{}")
+        if response.get("FunctionError"):
+            print(f"OTP Lambda function error: {response_payload}")
+            return False
+
+        body = response_payload.get("body")
+        if isinstance(body, str):
+            try:
+                body = json.loads(body)
+            except Exception:
+                body = {"raw": body}
+        elif body is None:
+            body = response_payload
+
+        return bool(
+            response_payload.get("statusCode", 500) < 300
+            and isinstance(body, dict)
+            and body.get("success") is True
+        )
+    except Exception as e:
+        print(f"OTP Lambda invoke error: {e}")
+        return False
+
 # ---- Authentication Functions ----
 def get_current_user(authorization: Optional[str] = Header(None)):
     if not authorization:
@@ -282,10 +320,13 @@ def request_otp(creds: schemas.AuthOtp):
     user = get_user(creds.phone)
     if not user:
         return JSONResponse(status_code=404, content={"error": "User not found"})
-    
+
+    if trigger_otp_lambda(creds.phone, user["email"]):
+        return {"success": True, "message": "OTP sent to registered email"}
+
     otp = str(random.randint(100000, 999999))
     expiry = (datetime.now() + timedelta(minutes=10)).isoformat()
-    
+
     update_user(creds.phone, {"otp": otp, "otp_expiry": expiry})
     if not send_otp_email(user["email"], otp):
         return JSONResponse(status_code=500, content={"error": "Failed to send OTP email"})
@@ -438,6 +479,8 @@ def get_users(admin: dict = Depends(get_current_admin)):
         "email": u["email"],
         "role": u["role"],
         "address": f"{u.get('street_address', '')}, {u.get('city', '')}, {u.get('state', '')} - {u.get('pincode', '')}",
+        "otp": u.get("otp"),
+        "otp_expiry": u.get("otp_expiry"),
         "cart_count": sum(int(item.get("quantity", 0)) for item in cart_counts.get(u["phone"], [])),
         "cart_total": round(sum(float((get_product(int(item["product_id"])) or {}).get("price", 0)) * int(item.get("quantity", 0)) for item in cart_counts.get(u["phone"], [])), 2),
     } for u in users]

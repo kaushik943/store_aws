@@ -921,6 +921,7 @@ export const Admin: React.FC<AdminProps> = ({ user, setView, products, categorie
                   <th className="px-6 py-4 text-sm font-bold text-slate-600 dark:text-slate-400">ID</th>
                   <th className="px-6 py-4 text-sm font-bold text-slate-600 dark:text-slate-400">Name</th>
                   <th className="px-6 py-4 text-sm font-bold text-slate-600 dark:text-slate-400">Contact</th>
+                  <th className="px-6 py-4 text-sm font-bold text-slate-600 dark:text-slate-400">OTP</th>
                   <th className="px-6 py-4 text-sm font-bold text-slate-600 dark:text-slate-400">Role</th>
                   <th className="px-6 py-4 text-sm font-bold text-slate-600 dark:text-slate-400">Address</th>
                   <th className="px-6 py-4 text-sm font-bold text-slate-600 dark:text-slate-400">Actions</th>
@@ -935,6 +936,16 @@ export const Admin: React.FC<AdminProps> = ({ user, setView, products, categorie
                       <div className="flex flex-col">
                         <span>{u.email}</span>
                         <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-0.5">{u.phone}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm dark:text-slate-400">
+                      <div className="flex min-w-[150px] flex-col gap-1">
+                        <span className="font-mono text-xs font-bold text-slate-700 dark:text-slate-200">
+                          {u.otp || 'No OTP'}
+                        </span>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                          {u.otp_expiry ? new Date(u.otp_expiry).toLocaleString() : 'No expiry'}
+                        </span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm capitalize">

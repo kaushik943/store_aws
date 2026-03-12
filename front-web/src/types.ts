@@ -4,11 +4,16 @@ export interface User {
   email: string;
   phone: string;
   role: 'customer' | 'executive' | 'admin';
+  address?: string;
   street_address?: string;
   city?: string;
   state?: string;
   pincode?: string;
   landmark?: string;
+  otp?: string | null;
+  otp_expiry?: string | null;
+  cart_count?: number;
+  cart_total?: number;
   token?: string;
 }
 
