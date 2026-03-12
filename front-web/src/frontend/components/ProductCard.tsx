@@ -21,7 +21,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     : 0;
   const isOutOfStock = product.out_of_stock || (product.stock !== undefined && product.stock <= 0);
   const showUnit = Boolean(product.unit && product.unit.trim() && product.unit.trim().toLowerCase() !== 'na');
-  const imagePadding = compact ? 'p-1.5' : 'p-2';
+  const imagePadding = compact ? 'p-1.2' : 'p-2';
   const nameClass = compact ? 'text-[11px] leading-[1.22]' : 'text-[12px] leading-[1.24]';
   const pricePillClass = compact ? 'text-[13px] px-3 py-1.5' : 'text-[14px] px-3 py-1.5';
   const controlHeight = compact ? 'h-10' : 'h-11';
