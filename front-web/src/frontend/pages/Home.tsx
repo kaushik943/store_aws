@@ -27,6 +27,12 @@ export const Home: React.FC<HomeProps> = ({
 
   // If selected category is a subcategory, find its parent
   const parentCat = selectedCatObj?.parent_id ? categories.find(c => c.id === selectedCatObj.parent_id) : selectedCatObj;
+  const orderedRootCategories = parentCat
+    ? [
+        ...rootCategories.filter(c => c.id === parentCat.id),
+        ...rootCategories.filter(c => c.id !== parentCat.id),
+      ]
+    : rootCategories;
   const subCategories = parentCat ? categories.filter(c => c.parent_id === parentCat.id) : [];
   const parentCategoryProductIds = new Set(subCategories.map(c => c.id));
 
@@ -44,6 +50,8 @@ export const Home: React.FC<HomeProps> = ({
   const [selectedProductForModal, setSelectedProductForModal] = useState<Product | null>(null);
   const [catLimit, setCatLimit] = useState(5);
   const contentRef = useRef<HTMLDivElement>(null);
+  const categoryHeaderRef = useRef<HTMLDivElement>(null);
+  const shouldScrollToCategoryHeaderRef = useRef(false);
 
   useEffect(() => {
     const handleResize = () => setCatLimit(window.innerWidth < 640 ? 7 : 5);
@@ -88,48 +96,92 @@ export const Home: React.FC<HomeProps> = ({
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    if (!selectedCategory || !shouldScrollToCategoryHeaderRef.current) {
+      return;
+    }
+
+    const header = categoryHeaderRef.current;
+    if (!header) {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      header.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      shouldScrollToCategoryHeaderRef.current = false;
+    });
+  }, [selectedCategory]);
+
   const handleCategoryClick = (id: number) => {
+    shouldScrollToCategoryHeaderRef.current = true;
     setSelectedCategory(id);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const renderCategoryView = () => (
-    <div className="flex gap-0 h-[calc(100vh-140px)] overflow-hidden rounded-3xl sm:border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+    <div className="flex items-start gap-0 min-h-[calc(100vh-140px)] overflow-visible rounded-3xl sm:border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
       {/* Mobile/Tablet Sidebar (Hidden on Large screens) */}
-      <div className="w-20 sm:w-24 lg:hidden bg-slate-50 dark:bg-slate-950 border-r border-slate-100 dark:border-slate-800 overflow-y-auto scrollbar-hide flex flex-col items-center py-4 gap-4 shrink-0">
-        {rootCategories.map(cat => (
-          <div
-            key={cat.id}
-            onClick={() => handleCategoryClick(cat.id)}
-            className="flex flex-col items-center gap-1 cursor-pointer w-full px-1"
-          >
-            <div className={`w-12 h-12 shrink-0 rounded-[14px] overflow-hidden border transition-all ${(selectedCategory === cat.id || parentCat?.id === cat.id)
-              ? 'border-emerald-500 bg-white shadow-md shadow-emerald-500/10'
-              : 'border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 opacity-70 hover:opacity-100'
-              }`}>
-              {cat.image_url ? (
-                <img src={cat.image_url} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-emerald-50 text-emerald-600 font-bold text-[10px] uppercase">{cat.name[0]}</div>
+      <div className="w-20 sm:w-24 lg:hidden bg-slate-50 dark:bg-slate-950 border-r border-slate-100 dark:border-slate-800 overflow-visible flex flex-col items-center py-4 gap-3 shrink-0 self-stretch">
+        {orderedRootCategories.map(cat => {
+          const isParentActive = selectedCategory === cat.id || parentCat?.id === cat.id;
+          const mobileSubcategories = categories.filter(c => c.parent_id === cat.id);
+
+          return (
+            <div key={cat.id} className="w-full px-1">
+              <div
+                onClick={() => handleCategoryClick(cat.id)}
+                className="flex flex-col items-center gap-1 cursor-pointer w-full"
+              >
+                <div className={`w-12 h-12 shrink-0 rounded-[14px] overflow-hidden border transition-all ${isParentActive
+                  ? 'border-emerald-500 bg-white shadow-md shadow-emerald-500/10'
+                  : 'border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 opacity-70 hover:opacity-100'
+                  }`}>
+                  {cat.image_url ? (
+                    <img src={cat.image_url} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-emerald-50 text-emerald-600 font-bold text-[10px] uppercase">{cat.name[0]}</div>
+                  )}
+                </div>
+                <span className={`text-[9px] font-black text-center leading-tight uppercase tracking-tighter line-clamp-2 px-0.5 ${isParentActive ? 'text-emerald-600' : 'text-slate-500'}`}>
+                  {cat.name}
+                </span>
+              </div>
+
+              {isParentActive && mobileSubcategories.length > 0 && (
+                <div className="mt-2 ml-3 flex flex-col items-start gap-2 border-l border-emerald-200 pl-2.5">
+                  {mobileSubcategories.map(sub => (
+                    <button
+                      key={sub.id}
+                      onClick={() => handleCategoryClick(sub.id)}
+                      className="flex flex-col items-center gap-1 text-left"
+                    >
+                      <div className={`w-9 h-9 rounded-[10px] overflow-hidden border ${selectedCategory === sub.id ? 'border-emerald-500 bg-white shadow-sm' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900'}`}>
+                        {sub.image_url ? (
+                          <img src={sub.image_url} alt={sub.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 font-black text-[9px] uppercase">{sub.name[0]}</div>
+                        )}
+                      </div>
+                      <span className={`max-w-[46px] text-[8px] font-black leading-tight text-center ${selectedCategory === sub.id ? 'text-emerald-600' : 'text-slate-400'}`}>
+                        {sub.name}
+                      </span>
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
-            <span className={`text-[9px] font-black text-center leading-tight uppercase tracking-tighter line-clamp-2 px-0.5 ${(selectedCategory === cat.id || parentCat?.id === cat.id) ? 'text-emerald-600' : 'text-slate-500'
-              }`}>
-              {cat.name}
-            </span>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Main Product Area */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-white dark:bg-slate-900 border-l lg:border-none border-slate-100 dark:border-slate-800 relative w-full h-full pb-24">
-        <div className="flex items-center justify-between mb-4 sm:mb-6 sticky top-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm z-10 py-2 border-b border-slate-100 dark:border-slate-800 lg:border-none lg:bg-transparent lg:py-0 lg:backdrop-blur-none lg:relative">
+      <div className="flex-1 overflow-visible p-4 sm:p-6 lg:p-8 bg-white dark:bg-slate-900 border-l lg:border-none border-slate-100 dark:border-slate-800 relative w-full min-h-full pb-24">
+        <div ref={categoryHeaderRef} className="flex items-center justify-between mb-4 sm:mb-6 sticky top-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm z-20 py-2 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-3">
-            <h3 className="font-black text-lg sm:text-2xl lg:text-3xl text-slate-900 dark:text-white uppercase tracking-tighter italic">
+            <h3 className="font-black text-sm sm:text-2xl lg:text-3xl text-slate-900 dark:text-white uppercase tracking-tighter italic">
               {selectedCategory ? parentCat?.name : 'All Products'}
             </h3>
           </div>
-          <span className="text-[10px] sm:text-xs text-slate-500 font-black uppercase tracking-widest bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+          <span className="text-[8px] sm:text-[10px] text-slate-500 font-black uppercase tracking-[0.18em] bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
             {selectedCategory
               ? products.filter(matchesSelectedCategory).length
               : products.length
@@ -137,42 +189,85 @@ export const Home: React.FC<HomeProps> = ({
           </span>
         </div>
 
-        {subCategories.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide mb-4">
-            <button
-              onClick={() => setSelectedCategory(parentCat?.id || null)}
-              className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap border ${selectedCategory === parentCat?.id ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
-                }`}
-            >
-              All
-            </button>
-            {subCategories.map(sub => (
-              <button
-                key={sub.id}
-                onClick={() => setSelectedCategory(sub.id)}
-                className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap border ${selectedCategory === sub.id ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
-                  }`}
-              >
-                {sub.name}
-              </button>
-            ))}
+        <div className="flex flex-col gap-6">
+          <div className="lg:hidden">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+              {(selectedCategory
+                ? products.filter(matchesSelectedCategory)
+                : products
+              ).map(product => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  cartItem={cart.find(item => item.id === product.id)}
+                  addToCart={addToCart}
+                  removeFromCart={removeFromCart}
+                  onClick={setSelectedProductForModal}
+                />
+              ))}
+            </div>
           </div>
-        )}
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 lg:gap-5">
-          {(selectedCategory
-            ? products.filter(matchesSelectedCategory)
-            : products
-          ).map(product => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              cartItem={cart.find(item => item.id === product.id)}
-              addToCart={addToCart}
-              removeFromCart={removeFromCart}
-              onClick={setSelectedProductForModal}
-            />
-          ))}
+          <div className="hidden lg:flex flex-col gap-8">
+            {(() => {
+              const directParentProducts = parentCat
+                ? products.filter(product => product.category_id === parentCat.id)
+                : [];
+
+              const groupedSections = [
+                ...(selectedCategory === parentCat?.id && directParentProducts.length > 0
+                  ? [{ id: `parent-${parentCat.id}`, name: parentCat.name, items: directParentProducts }]
+                  : []),
+                ...((selectedCategory === parentCat?.id ? subCategories : subCategories.filter(sub => sub.id === selectedCategory))
+                  .map(sub => ({
+                    id: sub.id,
+                    name: sub.name,
+                    items: products.filter(product => product.category_id === sub.id),
+                  }))
+                  .filter(section => section.items.length > 0)),
+              ];
+
+              if (groupedSections.length === 0) {
+                return (
+                  <div className="grid grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-5">
+                    {products.filter(matchesSelectedCategory).map(product => (
+                      <ProductCard
+                        key={product.id}
+                        product={product}
+                        cartItem={cart.find(item => item.id === product.id)}
+                        addToCart={addToCart}
+                        removeFromCart={removeFromCart}
+                        onClick={setSelectedProductForModal}
+                      />
+                    ))}
+                  </div>
+                );
+              }
+
+              return groupedSections.map(section => (
+                <section key={section.id} className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-1.5 h-7 rounded-full bg-emerald-500"></div>
+                    <h4 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">
+                      {section.name}
+                    </h4>
+                  </div>
+                  <div className="grid grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-5">
+                    {section.items.map(product => (
+                      <ProductCard
+                        key={product.id}
+                        product={product}
+                        cartItem={cart.find(item => item.id === product.id)}
+                        addToCart={addToCart}
+                        removeFromCart={removeFromCart}
+                        onClick={setSelectedProductForModal}
+                      />
+                    ))}
+                  </div>
+                </section>
+              ));
+            })()}
+          </div>
         </div>
       </div>
     </div>
@@ -203,7 +298,7 @@ export const Home: React.FC<HomeProps> = ({
       </div>
 
       <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-x-4 gap-y-8 lg:gap-x-6 lg:gap-y-10">
-        {rootCategories.map(cat => (
+        {orderedRootCategories.map(cat => (
           <div
             key={cat.id}
             onClick={() => handleCategoryClick(cat.id)}
@@ -586,7 +681,7 @@ export const Home: React.FC<HomeProps> = ({
         {/* Curated Product Shelves */}
         {!selectedCategory && (
           <div className="space-y-16 md:space-y-24 pb-20">
-            {rootCategories.map((cat, index) => {
+            {orderedRootCategories.map((cat, index) => {
               const catProducts = products.filter(p => {
                 const subCatIds = categories.filter(c => c.parent_id === cat.id).map(c => c.id);
                 return p.category_id === cat.id || subCatIds.includes(p.category_id);
@@ -622,7 +717,7 @@ export const Home: React.FC<HomeProps> = ({
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+                  <div className="grid grid-cols-3 lg:grid-cols-5 gap-2.5 md:gap-3">
                     {catProducts.slice(0, 8).map(product => (
                       <ProductCard
                         key={product.id}
@@ -631,17 +726,19 @@ export const Home: React.FC<HomeProps> = ({
                         addToCart={addToCart}
                         removeFromCart={removeFromCart}
                         onClick={setSelectedProductForModal}
+                        compact
                       />
                     ))}
                     {catProducts.length > 8 && (
                       <div
                         onClick={() => handleCategoryClick(cat.id)}
-                        className="flex flex-col items-center justify-center bg-white dark:bg-slate-800 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 cursor-pointer hover:border-emerald-500 hover:bg-emerald-50/30 transition-all group/seeall min-h-[160px]"
+                        className="aspect-[0.74] flex flex-col items-center justify-center bg-white dark:bg-slate-800 rounded-[1rem] border border-dashed border-slate-200 dark:border-slate-700 cursor-pointer hover:border-emerald-500 hover:bg-emerald-50/30 transition-all group/seeall"
                       >
-                        <div className={`p-3 rounded-full mb-2 group-hover/seeall:scale-110 transition-transform bg-slate-50 dark:bg-slate-700`}>
-                          <ChevronRight size={20} className={variant.accent} />
+                        <div className={`p-2.5 rounded-full mb-2 group-hover/seeall:scale-110 transition-transform bg-slate-50 dark:bg-slate-700`}>
+                          <ChevronRight size={18} className={variant.accent} />
                         </div>
-                        <span className={`font-black text-[9px] uppercase tracking-widest text-slate-400 group-hover/seeall:text-emerald-600 text-center px-2`}>+{catProducts.length - 8} More</span>
+                        <span className="font-black text-[9px] uppercase tracking-widest text-slate-400 group-hover/seeall:text-emerald-600 text-center px-2">View More</span>
+                        <span className="mt-1 text-[8px] font-bold uppercase tracking-wider text-slate-300 dark:text-slate-500">+{catProducts.length - 8}</span>
                       </div>
                     )}
                   </div>

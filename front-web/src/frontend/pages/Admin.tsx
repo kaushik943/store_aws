@@ -32,6 +32,8 @@ export const Admin: React.FC<AdminProps> = ({ user, setView, products, categorie
   const [newProductPreviewUrl, setNewProductPreviewUrl] = useState('');
   const [selectedCreateCategoryId, setSelectedCreateCategoryId] = useState<number | ''>('');
   const [selectedCreateSubcategoryId, setSelectedCreateSubcategoryId] = useState<number | ''>('');
+  const [selectedEditCategoryId, setSelectedEditCategoryId] = useState<number | ''>('');
+  const [selectedEditSubcategoryId, setSelectedEditSubcategoryId] = useState<number | ''>('');
 
   useEffect(() => {
     return () => {
@@ -48,6 +50,14 @@ export const Admin: React.FC<AdminProps> = ({ user, setView, products, categorie
   const createSubcategories = selectedCreateCategoryId === ''
     ? []
     : categories.filter(c => c.parent_id === selectedCreateCategoryId);
+  const editSubcategories = selectedEditCategoryId === ''
+    ? []
+    : categories.filter(c => c.parent_id === selectedEditCategoryId);
+  const sortedProducts = [...products].sort((a, b) => {
+    const aKey = String(a.product_id || `ZZZ-${a.id}`).toLowerCase();
+    const bKey = String(b.product_id || `ZZZ-${b.id}`).toLowerCase();
+    return aKey.localeCompare(bKey, undefined, { numeric: true, sensitivity: 'base' });
+  });
 
   useEffect(() => {
     if (rootCategories.length === 0) return;
@@ -66,6 +76,30 @@ export const Admin: React.FC<AdminProps> = ({ user, setView, products, categorie
     const currentSubExists = createSubcategories.some(c => c.id === selectedCreateSubcategoryId);
     if (!currentSubExists) setSelectedCreateSubcategoryId('');
   }, [selectedCreateCategoryId, categories]);
+
+  useEffect(() => {
+    if (!editingProduct || categories.length === 0) {
+      setSelectedEditCategoryId('');
+      setSelectedEditSubcategoryId('');
+      return;
+    }
+
+    const currentCategory = categories.find(c => c.id === editingProduct.category_id);
+    const parentId = currentCategory?.parent_id || currentCategory?.id || '';
+    const subId = editingProduct.subcategory_id || (currentCategory?.parent_id ? currentCategory.id : '');
+
+    setSelectedEditCategoryId(prev => (prev === '' ? parentId as number | '' : prev));
+    setSelectedEditSubcategoryId(prev => (prev === '' ? subId as number | '' : prev));
+  }, [editingProduct?.id, categories.length]);
+
+  useEffect(() => {
+    if (selectedEditCategoryId === '' || editSubcategories.length === 0) {
+      if (selectedEditSubcategoryId !== '') setSelectedEditSubcategoryId('');
+      return;
+    }
+    const currentSubExists = editSubcategories.some(c => c.id === selectedEditSubcategoryId);
+    if (!currentSubExists) setSelectedEditSubcategoryId('');
+  }, [selectedEditCategoryId, categories]);
 
   useEffect(() => {
     localStorage.setItem('adminTab', activeTab);
@@ -728,7 +762,7 @@ export const Admin: React.FC<AdminProps> = ({ user, setView, products, categorie
             <div className="bg-white dark:bg-slate-900 rounded-[40px] border border-slate-100 dark:border-slate-800 shadow-sm mt-8 overflow-hidden">
               <div className="px-8 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                 <h3 className="text-2xl font-black dark:text-white flex items-center gap-3 italic">
-                  <LayoutGrid className="text-emerald-600" /> Current Products ({products.length})
+                  <LayoutGrid className="text-emerald-600" /> Current Products ({sortedProducts.length})
                 </h3>
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Spreadsheet View</span>
               </div>
@@ -740,6 +774,7 @@ export const Admin: React.FC<AdminProps> = ({ user, setView, products, categorie
                       <th className="px-4 py-3 text-[10px] font-black uppercase text-slate-400 tracking-widest border-r border-slate-100 dark:border-slate-800">Product ID</th>
                       <th className="px-4 py-3 text-[10px] font-black uppercase text-slate-400 tracking-widest border-r border-slate-100 dark:border-slate-800 min-w-[180px]">Product</th>
                       <th className="px-4 py-3 text-[10px] font-black uppercase text-slate-400 tracking-widest border-r border-slate-100 dark:border-slate-800">Category</th>
+                      <th className="px-4 py-3 text-[10px] font-black uppercase text-slate-400 tracking-widest border-r border-slate-100 dark:border-slate-800">Sub Category</th>
                       <th className="px-4 py-3 text-[10px] font-black uppercase text-blue-400 tracking-widest border-r border-slate-100 dark:border-slate-800 text-center">CP ₹</th>
                       <th className="px-4 py-3 text-[10px] font-black uppercase text-emerald-500 tracking-widest border-r border-slate-100 dark:border-slate-800 text-center">SP ₹</th>
                       <th className="px-4 py-3 text-[10px] font-black uppercase text-slate-400 tracking-widest border-r border-slate-100 dark:border-slate-800 text-center">MRP ₹</th>
@@ -749,7 +784,7 @@ export const Admin: React.FC<AdminProps> = ({ user, setView, products, categorie
                     </tr>
                   </thead>
                   <tbody>
-                    {products.map((product, idx) => {
+                    {sortedProducts.map((product, idx) => {
                       const discountAmt = product.mrp && product.price ? (product.mrp - product.price) : (product.discount || 0);
                       const discountPct = product.mrp && product.price && product.mrp > 0 ? Math.round(((product.mrp - product.price) / product.mrp) * 100) : 0;
                       return (
@@ -773,7 +808,12 @@ export const Admin: React.FC<AdminProps> = ({ user, setView, products, categorie
                           </td>
                           <td className="px-4 py-3 border-r border-slate-100 dark:border-slate-800">
                             <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[9px] font-black uppercase text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                              {categories.find(c => c.id === product.category_id)?.name || 'Misc'}
+                              {categories.find(c => c.id === (categories.find(c => c.id === product.category_id)?.parent_id || product.category_id))?.name || "Misc"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 border-r border-slate-100 dark:border-slate-800">
+                            <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-900/20 text-[9px] font-black uppercase text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
+                              {categories.find(c => c.id === product.subcategory_id)?.name || (categories.find(c => c.id === product.category_id)?.parent_id ? categories.find(c => c.id === product.category_id)?.name : "?")}
                             </span>
                           </td>
                           <td className="px-4 py-3 text-center border-r border-slate-100 dark:border-slate-800">
@@ -1421,15 +1461,36 @@ export const Admin: React.FC<AdminProps> = ({ user, setView, products, categorie
               </div>
 
               {/* Row 2: Category */}
-              <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Category</label>
-                <select
-                  value={editingProduct.category_id || ''}
-                  onChange={e => setEditingProduct((p: any) => ({ ...p, category_id: parseInt(e.target.value) }))}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:bg-slate-800 dark:border-slate-700 dark:text-white font-bold text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none"
-                >
-                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Category</label>
+                  <select
+                    value={selectedEditCategoryId}
+                    onChange={e => {
+                      const nextCategoryId = e.target.value ? parseInt(e.target.value, 10) : '';
+                      setSelectedEditCategoryId(nextCategoryId as number | '');
+                      setSelectedEditSubcategoryId('');
+                    }}
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:bg-slate-800 dark:border-slate-700 dark:text-white font-bold text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+                  >
+                    {rootCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Sub Category</label>
+                  <select
+                    value={selectedEditSubcategoryId}
+                    onChange={e => {
+                      const nextSubcategoryId = e.target.value ? parseInt(e.target.value, 10) : '';
+                      setSelectedEditSubcategoryId(nextSubcategoryId as number | '');
+                    }}
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:bg-slate-800 dark:border-slate-700 dark:text-white font-bold text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-60"
+                    disabled={editSubcategories.length === 0}
+                  >
+                    <option value="">No sub category</option>
+                    {editSubcategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
               </div>
 
               {/* Row 3: Pricing spreadsheet */}
@@ -1544,13 +1605,15 @@ export const Admin: React.FC<AdminProps> = ({ user, setView, products, categorie
                 onClick={async () => {
                   setSavingProduct(true);
                   try {
+                    const finalEditCategoryId = Number(selectedEditSubcategoryId || selectedEditCategoryId || editingProduct.category_id);
                     const payload = {
                       ...editingProduct,
                       price: parseFloat(editingProduct.price),
                       cost_price: parseFloat(editingProduct.cost_price || 0),
                       mrp: parseFloat(editingProduct.mrp || 0),
                       stock: parseInt(editingProduct.stock || 0),
-                      category_id: parseInt(editingProduct.category_id),
+                      category_id: finalEditCategoryId,
+                      subcategory_id: selectedEditSubcategoryId === '' ? null : Number(selectedEditSubcategoryId),
                       discount: editingProduct.mrp > 0 ? Math.round(((editingProduct.mrp - editingProduct.price) / editingProduct.mrp) * 100) : 0
                     };
                     const res = await fetch(`/api/admin/products/${editingProduct.id}`, {

@@ -1,63 +1,194 @@
 # AK Store Deploy Guide
 
-## Project Structure
-
-- `backend/` -> FastAPI backend, DynamoDB access, S3 upload logic, seed scripts
-- `front-web/` -> React/Vite frontend
-- `.env` -> local environment values used for local testing
-- `START_AK_STORE.bat` -> starts backend and frontend locally
-
-## Current Hosted Setup
+## Target Hosted Setup
 
 - Frontend: Vercel
-- Backend API: AWS Lambda + API Gateway
+- Backend API: EC2 + Nginx + Gunicorn + FastAPI
 - Database: DynamoDB on AWS
 - Uploaded product images: S3 on AWS
 
-Live URLs:
+## Repo Files For EC2
+
+- `backend/` -> FastAPI backend
+- `backend/requirements.txt` -> backend Python dependencies
+- `deploy/ec2/ak-store-api.service` -> systemd service for Gunicorn
+- `deploy/ec2/nginx-ak-store.conf` -> Nginx reverse proxy config
+- `deploy/ec2/setup-server.sh` -> first-time EC2 server setup
+- `deploy/ec2/deploy-backend.sh` -> backend deploy/restart script on EC2
+- `front-web/vercel.ec2.template.json` -> Vercel rewrite template for EC2 cutover
+- `START_AK_STORE.bat` -> local frontend + backend startup
+
+## Current Live URLs Before Cutover
 
 - Frontend: `https://ak-store-rxl.vercel.app`
-- Backend: `https://23tkt4cqz3.execute-api.ap-south-1.amazonaws.com/prod`
-- Health: `https://23tkt4cqz3.execute-api.ap-south-1.amazonaws.com/prod/api/health`
+- Lambda backend: `https://23tkt4cqz3.execute-api.ap-south-1.amazonaws.com/prod`
+
+## What Stays On AWS
+
+- DynamoDB tables stay as-is
+- S3 upload bucket stays as-is
+- SMTP stays as-is
+- only the FastAPI compute layer moves from Lambda to EC2
+
+## 1. Create EC2
+
+Recommended instance:
+
+- AMI: Ubuntu 24.04 LTS or 22.04 LTS
+- Instance type: `t3.small` or `t3.medium`
+- Storage: `20 GB` gp3
+- Region: `ap-south-1`
+
+Recommended security group:
+
+- `22` from your IP only
+- `80` from `0.0.0.0/0`
+- `443` from `0.0.0.0/0`
+
+Attach an IAM role to the instance with at least:
+
+- DynamoDB read/write access for your app tables
+- S3 access to `ak-store-api-prod-007222077181-uploads`
+- CloudWatch Logs optional if you later add log shipping
+
+Allocate and attach an Elastic IP.
+
+## 2. Put Code On EC2
+
+SSH into the server, install git if needed, and clone the repo:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y git
+git clone https://github.com/kaushik943/store_aws.git /opt/ak-store
+cd /opt/ak-store
+```
+
+Create root `.env` on EC2 with production values:
+
+```env
+DATABASE_TYPE=dynamodb
+AWS_REGION=ap-south-1
+UPLOADS_BUCKET=ak-store-api-prod-007222077181-uploads
+SECRET_KEY=replace-with-strong-secret
+SMTP_EMAIL=your-smtp-email
+SMTP_PASSWORD=your-smtp-password
+CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,https://ak-store-rxl.vercel.app,http://YOUR_EC2_PUBLIC_HOST
+```
+
+If you are not using an EC2 IAM role, also add:
+
+```env
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+AWS_SESSION_TOKEN=...
+```
+
+Prefer the IAM role instead of static keys.
+
+## 3. First-Time Server Setup On EC2
+
+From inside `/opt/ak-store` run:
+
+```bash
+chmod +x deploy/ec2/setup-server.sh deploy/ec2/deploy-backend.sh
+./deploy/ec2/setup-server.sh
+```
+
+This does:
+
+- installs git, Python 3.11, venv, pip, nginx
+- creates Nginx site config
+- enables and restarts Nginx
+
+## 4. Deploy Backend On EC2
+
+From inside `/opt/ak-store` run:
+
+```bash
+./deploy/ec2/deploy-backend.sh
+```
+
+This does:
+
+- creates the Python virtualenv if missing
+- installs backend dependencies
+- installs the systemd service
+- starts `ak-store-api`
+
+## 5. Verify EC2 Backend Directly
+
+On the EC2 server:
+
+```bash
+curl http://127.0.0.1:8000/api/health
+curl http://YOUR_EC2_PUBLIC_HOST/api/health
+```
+
+Expected response:
+
+```json
+{"status":"ok","database":"DynamoDB","region":"ap-south-1"}
+```
+
+## 6. Cut Vercel Over To EC2
+
+After the EC2 backend is working:
+
+1. open `front-web/vercel.ec2.template.json`
+2. replace `YOUR_EC2_PUBLIC_HOST` with your Elastic IP or domain
+3. copy that content into `front-web/vercel.json`
+4. redeploy the frontend
+
+Redeploy command:
+
+```powershell
+cd front-web
+npx vercel --prod
+```
+
+After that, verify:
+
+- `https://ak-store-rxl.vercel.app/api/health`
+- `https://ak-store-rxl.vercel.app`
+
+## 7. Optional HTTPS On EC2
+
+If you attach a real domain to EC2, install Certbot and issue TLS:
+
+```bash
+sudo apt-get install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d api.yourdomain.com
+```
+
+Then point Vercel rewrites to `https://api.yourdomain.com` instead of raw EC2 IP.
+
+## 8. Remove Lambda After Cutover
+
+Only after Vercel is confirmed against EC2:
+
+- stop using `serverless.yml`
+- optionally delete Lambda function
+- optionally delete API Gateway
+- keep DynamoDB and S3
+
+Do not delete:
+
+- DynamoDB tables
+- S3 upload bucket
+- IAM resources still used by EC2
 
 ## Local Development
 
-### 1. Check `.env`
+Local still works the same:
 
-Keep these values in root `.env`:
-
-- `DATABASE_TYPE=dynamodb`
-- `AWS_ACCESS_KEY_ID=...`
-- `AWS_SECRET_ACCESS_KEY=...`
-- `AWS_SESSION_TOKEN=...` if using temporary credentials
-- `SECRET_KEY=...`
-- `VITE_BACKEND_URL=http://localhost:8000`
-- `CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,https://ak-store-rxl.vercel.app`
-
-This means local backend still reads/writes directly to AWS DynamoDB and S3.
-
-So yes:
-
-- products are fetched from AWS
-- categories are fetched from AWS
-- uploaded product images go to AWS S3
-- frontend shows those same AWS-backed records locally
-
-## Start Locally
-
-Double-click:
-
-- `START_AK_STORE.bat`
-
-Or run manually:
-
-### Backend
+Backend:
 
 ```powershell
 venv\Scripts\python.exe -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### Frontend
+Frontend:
 
 ```powershell
 cd front-web
@@ -65,125 +196,8 @@ npm install
 npm run dev:frontend
 ```
 
-Open:
+## Deployment Summary
 
-- Frontend: `http://localhost:5173`
-- Backend health: `http://localhost:8000/api/health`
-
-## What Happens Locally
-
-Frontend:
-
-- runs from `front-web/`
-- calls `/api/...`
-- Vite proxies `/api` and `/uploads` to `http://localhost:8000`
-
-Backend:
-
-- runs from `backend/`
-- reads and writes DynamoDB on AWS
-- uploads admin images to S3 on AWS
-
-So your local changes can be tested against the real AWS data/services before deployment.
-
-## Typical Local Workflow
-
-1. Start the project with `START_AK_STORE.bat`
-2. Make frontend changes in `front-web/src/`
-3. Make backend changes in `backend/`
-4. Test:
-   - home page
-   - login
-   - admin add product
-   - admin upload image
-   - cart
-   - checkout
-   - profile
-5. Run frontend type-check:
-
-```powershell
-cd front-web
-npm run lint
-```
-
-6. Run frontend production build:
-
-```powershell
-cd front-web
-npm run build
-```
-
-## Deploy Backend To AWS
-
-Run from project root:
-
-```powershell
-npx serverless deploy --verbose
-```
-
-That deploys:
-
-- FastAPI backend from `backend/`
-- DynamoDB access
-- S3 upload support
-- Lambda + API Gateway
-
-Verify after deploy:
-
-- `https://23tkt4cqz3.execute-api.ap-south-1.amazonaws.com/prod/api/health`
-
-## Deploy Frontend To Vercel
-
-Run from `front-web/`:
-
-```powershell
-npx vercel --prod
-```
-
-Verify after deploy:
-
-- `https://ak-store-rxl.vercel.app`
-- `https://ak-store-rxl.vercel.app/api/health`
-
-## If You Change Only Frontend
-
-Deploy only frontend:
-
-```powershell
-cd front-web
-npx vercel --prod
-```
-
-## If You Change Only Backend
-
-Deploy only backend:
-
-```powershell
-npx serverless deploy --verbose
-```
-
-## If You Change Both
-
-1. Test locally
-2. Deploy backend first
-3. Verify backend health
-4. Deploy frontend
-5. Verify live frontend
-
-## Admin Product + Image Flow
-
-When admin adds a product:
-
-1. admin uploads image
-2. backend uploads image to AWS S3
-3. backend gets a public S3 URL
-4. admin saves product
-5. product record in DynamoDB stores the image URL
-6. frontend fetches product from backend
-7. frontend shows the image from S3
-
-## Seeded Accounts
-
-- Admin: `9999999999 / admin123`
-- Executive: `8888888888 / exec123`
-- Customer: `8210282102 / aditya123`
+- local changes in `backend/` -> deploy to EC2 with `./deploy/ec2/deploy-backend.sh`
+- local changes in `front-web/` -> deploy to Vercel with `npx vercel --prod`
+- DynamoDB and S3 remain shared between local, EC2, and frontend

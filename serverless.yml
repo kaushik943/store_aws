@@ -11,12 +11,12 @@ custom:
     slim: false
     strip: false
     layer: false
-    useDownloadCache: true
-    useStaticCache: true
+    useDownloadCache: false
+    useStaticCache: false
 
 provider:
   name: aws
-  runtime: python3.9
+  runtime: python3.11
   region: ap-south-1
   stage: ${opt:stage, 'prod'}
   memorySize: 512
@@ -77,12 +77,18 @@ plugins:
 package:
   individually: true
   patterns:
+    - '!**'
+    - 'backend/**'
+    - 'uploads/**'
+    - 'serverless.yml'
+    - '!front-web/**'
     - '!node_modules/**'
     - '!venv/**'
     - '!.git/**'
+    - '!.serverless/**'
+    - '!*.md'
+    - '!*.xlsx'
     - '!.env.example'
-    - 'backend/**'
-    - 'uploads/**'
 
 resources:
   Resources:

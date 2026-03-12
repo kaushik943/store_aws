@@ -89,6 +89,7 @@ export interface Product {
   unit: string;
   image: string;
   category_id: number;
+  subcategory_id?: number | null;
   stock: number;
   highlights?: string;
   brand?: string;

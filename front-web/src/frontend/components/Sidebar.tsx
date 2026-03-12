@@ -16,6 +16,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
   categories, selectedCategory, setSelectedCategory, isSidebarOpen, setIsSidebarOpen, user, handleLogout
 }) => {
   const rootCategories = categories.filter(c => !c.parent_id);
+  const selectedCatObj = categories.find(c => c.id === selectedCategory);
+  const parentCat = selectedCatObj?.parent_id ? categories.find(c => c.id === selectedCatObj.parent_id) : selectedCatObj;
+  const orderedRootCategories = parentCat
+    ? [
+        ...rootCategories.filter(c => c.id === parentCat.id),
+        ...rootCategories.filter(c => c.id !== parentCat.id),
+      ]
+    : rootCategories;
 
   return (
     <>
@@ -58,7 +66,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     All Products
                   </span>
                 </button>
-                {rootCategories.map(cat => (
+                {orderedRootCategories.map(cat => (
                   <button
                     key={cat.id}
                     onClick={() => { setSelectedCategory(cat.id); setIsSidebarOpen(false); }}
