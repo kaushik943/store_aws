@@ -21,7 +21,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     : 0;
   const isOutOfStock = product.out_of_stock || (product.stock !== undefined && product.stock <= 0);
   const showUnit = Boolean(product.unit && product.unit.trim() && product.unit.trim().toLowerCase() !== 'na');
-  const imagePadding = compact ? 'p-2.5' : 'p-3';
+  const imagePadding = compact ? 'p-1.5' : 'p-2';
   const nameClass = compact ? 'text-[11px] leading-[1.22]' : 'text-[12px] leading-[1.24]';
   const pricePillClass = compact ? 'text-[13px] px-3 py-1.5' : 'text-[14px] px-3 py-1.5';
   const controlHeight = compact ? 'h-10' : 'h-11';
@@ -47,6 +47,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         />
 
         <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
+          {discount > 0 && !isOutOfStock && (
+            <span className={`bg-[#187a31] text-white ${badgeText} font-black px-2 py-1 rounded-lg shadow-sm uppercase`}>
+              ₹{savings} OFF
+            </span>
+          )}
           {isOutOfStock && (
             <span className={`bg-slate-500 text-white ${badgeText} font-black px-2 py-1 rounded-lg shadow-sm uppercase`}>
               Sold Out
@@ -89,7 +94,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         </div>
       </div>
 
-      <div className={`flex h-full flex-col bg-white px-1 pt-5 ${compact ? 'pb-0.5' : 'pb-1'}`}>
+      <div className={`flex h-full flex-col bg-white px-1 pt-4 ${compact ? 'pb-0' : 'pb-0.5'}`}>
         <div className="mt-1 flex flex-wrap items-center gap-2">
           <span className={`rounded-[0.65rem] bg-[#2e8b45] font-black leading-none text-white shadow-[0_4px_0_#1e5a2d] ${pricePillClass}`}>
             {"\u20B9"}{product.price}
@@ -99,16 +104,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           )}
         </div>
 
-        {discount > 0 && (
-          <div className="mt-2 flex items-center gap-2 overflow-hidden">
-            <span className="whitespace-nowrap text-[11px] font-black uppercase tracking-tight text-[#187a31]">
-              {"\u20B9"}{savings} OFF
-            </span>
-            <div className="h-px w-full border-b-2 border-dotted border-slate-300" />
-          </div>
-        )}
-
-        <h4 className={`${nameClass} mt-3 min-h-[3.65rem] overflow-hidden font-semibold text-slate-900 line-clamp-3`}>
+        <h4 className={`${nameClass} mt-2.5 min-h-[3.35rem] overflow-hidden font-semibold text-slate-900 line-clamp-3`}>
           {product.name}
         </h4>
 
