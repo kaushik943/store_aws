@@ -37,6 +37,8 @@ export const Admin: React.FC<AdminProps> = ({ user, setView, products, categorie
   const [selectedCreateSubcategoryId, setSelectedCreateSubcategoryId] = useState<number | ''>('');
   const [selectedEditCategoryId, setSelectedEditCategoryId] = useState<number | ''>('');
   const [selectedEditSubcategoryId, setSelectedEditSubcategoryId] = useState<number | ''>('');
+  const [productsPage, setProductsPage] = useState(1);
+  const productsPerPage = 50;
 
   useEffect(() => {
     return () => {
@@ -63,6 +65,13 @@ export const Admin: React.FC<AdminProps> = ({ user, setView, products, categorie
       return aKey.localeCompare(bKey, undefined, { numeric: true, sensitivity: 'base' });
     });
   }, [products]);
+
+  useEffect(() => {
+    setProductsPage(1);
+  }, [sortedProducts.length]);
+
+  const productsTotalPages = Math.max(1, Math.ceil(sortedProducts.length / productsPerPage));
+  const pagedProducts = sortedProducts.slice((productsPage - 1) * productsPerPage, productsPage * productsPerPage);
 
   useEffect(() => {
     if (rootCategories.length === 0) return;
@@ -795,7 +804,36 @@ export const Admin: React.FC<AdminProps> = ({ user, setView, products, categorie
                 <h3 className="text-2xl font-black dark:text-white flex items-center gap-3 italic">
                   <LayoutGrid className="text-emerald-600" /> Current Products ({sortedProducts.length})
                 </h3>
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Spreadsheet View</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Page</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-black disabled:opacity-40"
+                      disabled={productsPage <= 1}
+                      onClick={() => setProductsPage(p => Math.max(1, p - 1))}
+                    >
+                      Prev
+                    </button>
+                    <div className="max-w-[260px] overflow-x-auto whitespace-nowrap scrollbar-hide">
+                      {Array.from({ length: productsTotalPages }, (_, i) => i + 1).map(p => (
+                        <button
+                          key={p}
+                          onClick={() => setProductsPage(p)}
+                          className={`mx-0.5 px-2.5 py-1.5 rounded-xl text-xs font-black ${p === productsPage ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200'}`}
+                        >
+                          {p}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-black disabled:opacity-40"
+                      disabled={productsPage >= productsTotalPages}
+                      onClick={() => setProductsPage(p => Math.min(productsTotalPages, p + 1))}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
@@ -815,12 +853,12 @@ export const Admin: React.FC<AdminProps> = ({ user, setView, products, categorie
                     </tr>
                   </thead>
                   <tbody>
-                    {sortedProducts.map((product, idx) => {
+                    {pagedProducts.map((product, idx) => {
                       const discountAmt = product.mrp && product.price ? (product.mrp - product.price) : (product.discount || 0);
                       const discountPct = product.mrp && product.price && product.mrp > 0 ? Math.round(((product.mrp - product.price) / product.mrp) * 100) : 0;
                       return (
                         <tr key={product.id} className={`border-b border-slate-100 dark:border-slate-800 hover:bg-emerald-50/30 dark:hover:bg-emerald-900/10 transition-colors ${idx % 2 === 0 ? '' : 'bg-slate-50/40 dark:bg-slate-950/40'}`}>
-                          <td className="px-4 py-3 text-xs text-slate-400 font-bold text-center border-r border-slate-100 dark:border-slate-800">{idx + 1}</td>
+                          <td className="px-4 py-3 text-xs text-slate-400 font-bold text-center border-r border-slate-100 dark:border-slate-800">{(productsPage - 1) * productsPerPage + idx + 1}</td>
                           <td className="px-4 py-3 border-r border-slate-100 dark:border-slate-800">
                             <span className="font-black text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded-md font-mono whitespace-nowrap">
                               {product.product_id || `#${product.id}`}

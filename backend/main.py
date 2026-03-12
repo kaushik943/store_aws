@@ -502,10 +502,12 @@ def get_users(limit: int = 100, start_phone: Optional[str] = None, include_cart:
     items = [{
         "id": _user_id_from_phone(u["phone"]),
         "phone": u["phone"],
-        "name": u.get("name", ""),
-        "email": u.get("email", ""),
+        "name": (u.get("name") or "").strip() or "Not available",
+        "email": (u.get("email") or "").strip() or "Not available",
         "role": u.get("role", "customer"),
-        "address": f"{u.get('street_address', '')}, {u.get('city', '')}, {u.get('state', '')} - {u.get('pincode', '')}",
+        "address": (
+            f"{u.get('street_address', '')}, {u.get('city', '')}, {u.get('state', '')} - {u.get('pincode', '')}"
+        ).strip(" ,-_") or "Not available",
         "otp": u.get("otp"),
         "otp_expiry": u.get("otp_expiry"),
         "otp_delivery_status": u.get("otp_delivery_status"),
