@@ -12,6 +12,7 @@ export interface User {
   landmark?: string;
   otp?: string | null;
   otp_expiry?: string | null;
+  otp_delivery_status?: string | null;
   cart_count?: number;
   cart_total?: number;
   token?: string;

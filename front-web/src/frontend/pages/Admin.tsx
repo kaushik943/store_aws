@@ -946,6 +946,17 @@ export const Admin: React.FC<AdminProps> = ({ user, setView, products, categorie
                         <span className="text-[10px] text-slate-400 dark:text-slate-500">
                           {u.otp_expiry ? new Date(u.otp_expiry).toLocaleString() : 'No expiry'}
                         </span>
+                        <span
+                          className={`text-[10px] font-bold uppercase ${
+                            u.otp_delivery_status === 'sent'
+                              ? 'text-emerald-600 dark:text-emerald-400'
+                              : u.otp_delivery_status === 'failed'
+                                ? 'text-red-600 dark:text-red-400'
+                                : 'text-amber-600 dark:text-amber-400'
+                          }`}
+                        >
+                          {u.otp_delivery_status || 'unknown'}
+                        </span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm capitalize">

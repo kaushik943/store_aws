@@ -157,16 +157,13 @@ def send_otp_email_via_smtp(email: str, otp: str) -> bool:
 
 
 def send_otp_email(email: str, otp: str) -> bool:
-    if send_otp_email_via_smtp(email, otp):
-        return True
-    print(f"[DEV MODE] OTP for {email} is {otp}")
-    return True
+    return send_otp_email_via_smtp(email, otp)
 
 
-def trigger_otp_lambda(phone: str, email: str) -> bool:
+def trigger_otp_lambda(phone: str, email: str) -> dict:
     function_name = os.getenv("OTP_LAMBDA_FUNCTION", "").strip()
     if not function_name:
-        return False
+        return {"invoked": False, "success": False, "otp_stored": False, "email_sent": False}
 
     try:
         payload = json.dumps({"phone": phone, "email": email}).encode("utf-8")
@@ -178,7 +175,7 @@ def trigger_otp_lambda(phone: str, email: str) -> bool:
         response_payload = json.loads(response["Payload"].read().decode("utf-8") or "{}")
         if response.get("FunctionError"):
             print(f"OTP Lambda function error: {response_payload}")
-            return False
+            return {"invoked": True, "success": False, "otp_stored": False, "email_sent": False}
 
         body = response_payload.get("body")
         if isinstance(body, str):
@@ -189,14 +186,19 @@ def trigger_otp_lambda(phone: str, email: str) -> bool:
         elif body is None:
             body = response_payload
 
-        return bool(
-            response_payload.get("statusCode", 500) < 300
-            and isinstance(body, dict)
-            and body.get("success") is True
-        )
+        if not isinstance(body, dict):
+            body = {}
+
+        return {
+            "invoked": True,
+            "success": bool(response_payload.get("statusCode", 500) < 300 and body.get("success") is True),
+            "otp_stored": bool(body.get("otp_stored")),
+            "email_sent": bool(body.get("email_sent", body.get("success"))),
+            "message": body.get("message") or body.get("error") or "OTP request failed",
+        }
     except Exception as e:
         print(f"OTP Lambda invoke error: {e}")
-        return False
+        return {"invoked": False, "success": False, "otp_stored": False, "email_sent": False}
 
 # ---- Authentication Functions ----
 def get_current_user(authorization: Optional[str] = Header(None)):
@@ -321,17 +323,32 @@ def request_otp(creds: schemas.AuthOtp):
     if not user:
         return JSONResponse(status_code=404, content={"error": "User not found"})
 
-    if trigger_otp_lambda(creds.phone, user["email"]):
-        return {"success": True, "message": "OTP sent to registered email"}
+    lambda_result = trigger_otp_lambda(creds.phone, user["email"])
+    if lambda_result.get("invoked"):
+        if lambda_result.get("success"):
+            return {"success": True, "message": "OTP sent to registered email", "email_sent": True}
+        if lambda_result.get("otp_stored"):
+            return {
+                "success": True,
+                "message": "OTP generated. Email delivery failed. Ask admin to check the Users dashboard.",
+                "email_sent": False,
+            }
 
     otp = str(random.randint(100000, 999999))
     expiry = (datetime.now() + timedelta(minutes=10)).isoformat()
 
-    update_user(creds.phone, {"otp": otp, "otp_expiry": expiry})
+    update_user(creds.phone, {"otp": otp, "otp_expiry": expiry, "otp_delivery_status": "pending"})
     if not send_otp_email(user["email"], otp):
-        return JSONResponse(status_code=500, content={"error": "Failed to send OTP email"})
+        update_user(creds.phone, {"otp_delivery_status": "failed"})
+        return {
+            "success": True,
+            "message": "OTP generated. Email delivery failed. Ask admin to check the Users dashboard.",
+            "email_sent": False,
+        }
 
-    return {"success": True, "message": "OTP sent to registered email"}
+    update_user(creds.phone, {"otp_delivery_status": "sent"})
+
+    return {"success": True, "message": "OTP sent to registered email", "email_sent": True}
 
 @app.post("/api/auth/verify-otp")
 def verify_otp(creds: schemas.VerifyOtp):
@@ -481,6 +498,7 @@ def get_users(admin: dict = Depends(get_current_admin)):
         "address": f"{u.get('street_address', '')}, {u.get('city', '')}, {u.get('state', '')} - {u.get('pincode', '')}",
         "otp": u.get("otp"),
         "otp_expiry": u.get("otp_expiry"),
+        "otp_delivery_status": u.get("otp_delivery_status"),
         "cart_count": sum(int(item.get("quantity", 0)) for item in cart_counts.get(u["phone"], [])),
         "cart_total": round(sum(float((get_product(int(item["product_id"])) or {}).get("price", 0)) * int(item.get("quantity", 0)) for item in cart_counts.get(u["phone"], [])), 2),
     } for u in users]

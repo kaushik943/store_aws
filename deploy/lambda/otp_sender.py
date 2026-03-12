@@ -62,16 +62,29 @@ def store_otp(phone: str, otp: str, expiry: str) -> bool:
         table = boto3.resource("dynamodb", region_name=REGION).Table(USERS_TABLE)
         table.update_item(
             Key={"phone": phone},
-            UpdateExpression="SET otp = :otp, otp_expiry = :expiry",
+            UpdateExpression="SET otp = :otp, otp_expiry = :expiry, otp_delivery_status = :status",
             ExpressionAttributeValues={
                 ":otp": otp,
                 ":expiry": expiry,
+                ":status": "pending",
             },
         )
         return True
     except Exception as exc:
         print(f"Lambda OTP store error: {exc}")
         return False
+
+
+def update_delivery_status(phone: str, status: str) -> None:
+    try:
+        table = boto3.resource("dynamodb", region_name=REGION).Table(USERS_TABLE)
+        table.update_item(
+            Key={"phone": phone},
+            UpdateExpression="SET otp_delivery_status = :status",
+            ExpressionAttributeValues={":status": status},
+        )
+    except Exception as exc:
+        print(f"Lambda OTP delivery status update error: {exc}")
 
 
 def _response(status_code: int, body: dict) -> dict:
@@ -104,6 +117,8 @@ def handler(event, context):
         return _response(500, {"success": False, "error": "Failed to store OTP"})
 
     if not send_otp_email_via_smtp(email, otp):
-        return _response(500, {"success": False, "error": "Failed to send OTP email"})
+        update_delivery_status(phone, "failed")
+        return _response(200, {"success": True, "otp_stored": True, "email_sent": False, "message": "OTP generated but email delivery failed"})
 
-    return _response(200, {"success": True, "message": "OTP sent"})
+    update_delivery_status(phone, "sent")
+    return _response(200, {"success": True, "otp_stored": True, "email_sent": True, "message": "OTP sent"})
