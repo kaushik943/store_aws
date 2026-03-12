@@ -1,11 +1,13 @@
 import os
 import random
 import hashlib
+import smtplib
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
 from typing import List, Optional
 import uuid
 import boto3
+from email.mime.text import MIMEText
 
 from fastapi import FastAPI, Depends, HTTPException, Header, File, UploadFile
 from fastapi.responses import JSONResponse
@@ -109,12 +111,58 @@ def create_access_token(data: dict):
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 # ---- Email Service ----
+def send_otp_email_via_smtp(email: str, otp: str) -> bool:
+    smtp_host = os.getenv("SMTP_HOST", "").strip() or "smtp.gmail.com"
+    smtp_user = os.getenv("SMTP_EMAIL", "").strip()
+    smtp_pass = os.getenv("SMTP_PASSWORD", "").strip()
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    smtp_use_ssl = os.getenv("SMTP_USE_SSL", "false").strip().lower() == "true"
+    smtp_from = os.getenv("SMTP_FROM_EMAIL", "").strip() or smtp_user
+
+    if not smtp_user or not smtp_pass or not smtp_from:
+        return False
+
+    message = MIMEText(f"Your OTP for login is: {otp}. It is valid for 10 minutes.", "plain")
+    message["Subject"] = "Your AK Store Login OTP"
+    message["From"] = smtp_from
+    message["To"] = email
+
+    attempts = []
+    primary_mode = "ssl" if smtp_use_ssl else "starttls"
+    attempts.append((smtp_port, primary_mode))
+    if (smtp_port, "starttls") not in attempts:
+        attempts.append((587, "starttls"))
+    if (smtp_port, "ssl") not in attempts:
+        attempts.append((465, "ssl"))
+
+    for port, mode in attempts:
+        try:
+            if mode == "ssl":
+                with smtplib.SMTP_SSL(smtp_host, port, timeout=20) as server:
+                    server.login(smtp_user, smtp_pass)
+                    server.send_message(message)
+            else:
+                with smtplib.SMTP(smtp_host, port, timeout=20) as server:
+                    server.ehlo()
+                    server.starttls()
+                    server.ehlo()
+                    server.login(smtp_user, smtp_pass)
+                    server.send_message(message)
+            return True
+        except Exception as e:
+            print(f"SMTP OTP send error on port {port} ({mode}): {e}")
+
+    return False
+
+
 def send_otp_email(email: str, otp: str) -> bool:
     ses_from_email = os.getenv("SES_FROM_EMAIL", "").strip()
     aws_region = os.getenv("AWS_REGION", "ap-south-1")
     configuration_set = os.getenv("SES_CONFIGURATION_SET", "").strip()
 
     if not ses_from_email:
+        if send_otp_email_via_smtp(email, otp):
+            return True
         print(f"[DEV MODE] OTP for {email} is {otp}")
         return True
 
@@ -138,6 +186,8 @@ def send_otp_email(email: str, otp: str) -> bool:
         return True
     except Exception as e:
         print(f"SES OTP send error: {e}")
+        if send_otp_email_via_smtp(email, otp):
+            return True
         return False
 
 # ---- Authentication Functions ----
