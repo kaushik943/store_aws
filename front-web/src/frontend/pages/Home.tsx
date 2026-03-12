@@ -716,8 +716,8 @@ export const Home: React.FC<HomeProps> = ({
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-3 lg:grid-cols-5 gap-2.5 md:gap-3">
-                    {catProducts.slice(0, 8).map(product => (
+                  <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-3">
+                    {catProducts.slice(0, 7).map(product => (
                       <ProductCard
                         key={product.id}
                         product={product}
@@ -728,16 +728,16 @@ export const Home: React.FC<HomeProps> = ({
                         compact
                       />
                     ))}
-                    {catProducts.length > 8 && (
+                    {catProducts.length > 7 && (
                       <div
                         onClick={() => handleCategoryClick(cat.id)}
-                        className="aspect-[0.74] flex flex-col items-center justify-center bg-white dark:bg-slate-800 rounded-[1rem] border border-dashed border-slate-200 dark:border-slate-700 cursor-pointer hover:border-emerald-500 hover:bg-emerald-50/30 transition-all group/seeall"
+                        className="aspect-[0.96] flex flex-col items-center justify-center bg-white dark:bg-slate-800 rounded-[1rem] border border-dashed border-slate-200 dark:border-slate-700 cursor-pointer hover:border-emerald-500 hover:bg-emerald-50/30 transition-all group/seeall"
                       >
                         <div className={`p-2.5 rounded-full mb-2 group-hover/seeall:scale-110 transition-transform bg-slate-50 dark:bg-slate-700`}>
                           <ChevronRight size={18} className={variant.accent} />
                         </div>
                         <span className="font-black text-[9px] uppercase tracking-widest text-slate-400 group-hover/seeall:text-emerald-600 text-center px-2">View More</span>
-                        <span className="mt-1 text-[8px] font-bold uppercase tracking-wider text-slate-300 dark:text-slate-500">+{catProducts.length - 8}</span>
+                        <span className="mt-1 text-[8px] font-bold uppercase tracking-wider text-slate-300 dark:text-slate-500">+{catProducts.length - 7}</span>
                       </div>
                     )}
                   </div>
