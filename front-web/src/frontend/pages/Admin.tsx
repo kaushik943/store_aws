@@ -17,6 +17,7 @@ export const Admin: React.FC<AdminProps> = ({ user, setView, products, categorie
   const [users, setUsers] = useState<any[]>([]);
   const [usersNext, setUsersNext] = useState<string | null>(null);
   const [usersLoading, setUsersLoading] = useState(false);
+  const [usersError, setUsersError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'stats' | 'orders' | 'products' | 'users' | 'carts' | 'discounts' | 'pickup'>(() => {
     return (localStorage.getItem('adminTab') as any) || 'stats';
   });
@@ -193,15 +194,27 @@ export const Admin: React.FC<AdminProps> = ({ user, setView, products, categorie
   const fetchUsers = async (mode: 'reset' | 'more' = 'reset') => {
     try {
       setUsersLoading(true);
+      setUsersError(null);
       const includeCart = activeTab === 'carts';
       const startPhone = mode === 'more' ? usersNext : null;
-      const url = `/api/admin/users?include_cart=${includeCart ? 'true' : 'false'}&limit=200${startPhone ? `&start_phone=${encodeURIComponent(startPhone)}` : ''}`;
+      const url = `/api/admin/users?include_cart=${includeCart ? 'true' : 'false'}&limit=100${startPhone ? `&start_phone=${encodeURIComponent(startPhone)}` : ''}`;
       const res = await fetch(url, { headers: { 'Authorization': user?.token || '' } });
+      if (!res.ok) {
+        const txt = await res.text().catch(() => '');
+        setUsersError(txt || `HTTP ${res.status}`);
+        if (mode === 'reset') setUsers([]);
+        setUsersNext(null);
+        return;
+      }
+
       const data = await res.json().catch(() => ({}));
       const items = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : []);
       const next = typeof data?.next_start_phone === 'string' ? data.next_start_phone : null;
       if (mode === 'more') setUsers(prev => [...prev, ...items]);
-      else setUsers(items);
+      else {
+        setUsers(items);
+        setUsersNext(null);
+      }
       setUsersNext(next);
     } catch (e) { console.error(e); }
     finally { setUsersLoading(false); }
@@ -935,6 +948,11 @@ export const Admin: React.FC<AdminProps> = ({ user, setView, products, categorie
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden overflow-x-auto">
             {usersLoading && (
               <div className="px-6 py-4 text-xs font-bold text-slate-500">Loading users...</div>
+            )}
+            {!usersLoading && users.length === 0 && (
+              <div className="px-6 py-4 text-xs font-bold text-slate-500">
+                {usersError ? `Failed to load users: ${usersError}` : 'No users loaded.'}
+              </div>
             )}
             <table className="w-full text-left">
               <thead className="bg-slate-50 dark:bg-slate-950 border-b border-slate-100 dark:border-slate-800">

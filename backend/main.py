@@ -487,7 +487,7 @@ def delete_category_endpoint(category_id: int, admin: dict = Depends(get_current
 # ---- USER MANAGEMENT ROUTES ----
 
 @app.get("/api/admin/users")
-def get_users(limit: int = 200, start_phone: Optional[str] = None, include_cart: bool = False, admin: dict = Depends(get_current_admin)):
+def get_users(limit: int = 100, start_phone: Optional[str] = None, include_cart: bool = False, admin: dict = Depends(get_current_admin)):
     users, next_start_phone = get_users_page(limit=limit, start_phone=start_phone)
     cart_counts = get_all_cart_counts() if include_cart else {}
     product_prices = (
