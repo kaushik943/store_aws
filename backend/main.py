@@ -486,14 +486,18 @@ def delete_category_endpoint(category_id: int, admin: dict = Depends(get_current
 # ---- USER MANAGEMENT ROUTES ----
 
 @app.get("/api/admin/users")
-def get_users(admin: dict = Depends(get_current_admin)):
+def get_users(include_cart: bool = False, admin: dict = Depends(get_current_admin)):
     users = get_all_users()
-    cart_counts = get_all_cart_counts()
-    product_prices = {
-        int(product["id"]): float(product.get("price", 0))
-        for product in get_all_products()
-        if product.get("id") is not None
-    }
+    cart_counts = get_all_cart_counts() if include_cart else {}
+    product_prices = (
+        {
+            int(product["id"]): float(product.get("price", 0))
+            for product in get_all_products()
+            if product.get("id") is not None
+        }
+        if include_cart
+        else {}
+    )
     return [{
         "id": _user_id_from_phone(u["phone"]),
         "phone": u["phone"],

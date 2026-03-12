@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { LayoutDashboard, ArrowLeft, Trash2, ShoppingCart, Eye, X, Upload, Receipt, FileText, Plus, Trash, LayoutGrid, Pencil, CheckCircle } from 'lucide-react';
 import { User, Order, Product, Category, PickupLocation, PickupSlot } from '../../types';
 import { InvoiceModal } from '../components/InvoiceModal';
@@ -53,11 +53,13 @@ export const Admin: React.FC<AdminProps> = ({ user, setView, products, categorie
   const editSubcategories = selectedEditCategoryId === ''
     ? []
     : categories.filter(c => c.parent_id === selectedEditCategoryId);
-  const sortedProducts = [...products].sort((a, b) => {
-    const aKey = String(a.product_id || `ZZZ-${a.id}`).toLowerCase();
-    const bKey = String(b.product_id || `ZZZ-${b.id}`).toLowerCase();
-    return aKey.localeCompare(bKey, undefined, { numeric: true, sensitivity: 'base' });
-  });
+  const sortedProducts = useMemo(() => {
+    return [...products].sort((a, b) => {
+      const aKey = String(a.product_id || `ZZZ-${a.id}`).toLowerCase();
+      const bKey = String(b.product_id || `ZZZ-${b.id}`).toLowerCase();
+      return aKey.localeCompare(bKey, undefined, { numeric: true, sensitivity: 'base' });
+    });
+  }, [products]);
 
   useEffect(() => {
     if (rootCategories.length === 0) return;
@@ -188,7 +190,8 @@ export const Admin: React.FC<AdminProps> = ({ user, setView, products, categorie
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch('/api/admin/users', { headers: { 'Authorization': user?.token || '' } });
+      const includeCart = activeTab === 'carts';
+      const res = await fetch(`/api/admin/users?include_cart=${includeCart ? 'true' : 'false'}`, { headers: { 'Authorization': user?.token || '' } });
       const data = await res.json();
       if (Array.isArray(data)) setUsers(data);
     } catch (e) { console.error(e); }

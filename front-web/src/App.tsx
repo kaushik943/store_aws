@@ -200,7 +200,6 @@ export default function App() {
 
   useEffect(() => {
     fetchCategories();
-    fetchProducts();
   }, []);
 
   useEffect(() => {
