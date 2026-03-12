@@ -17,17 +17,17 @@ The goal is:
 
 - Framework: FastAPI
 - Folder: `backend/`
-- Hosted on: AWS Lambda + API Gateway
+- Hosted on: EC2 + Nginx + FastAPI
 - Base URL:
 
 ```text
-https://23tkt4cqz3.execute-api.ap-south-1.amazonaws.com/prod
+http://65.1.105.90
 ```
 
 - Health endpoint:
 
 ```text
-https://23tkt4cqz3.execute-api.ap-south-1.amazonaws.com/prod/api/health
+http://65.1.105.90/api/health
 ```
 
 ### Database
@@ -299,7 +299,7 @@ Android app should have environment-based base URLs:
 ### Production
 
 ```text
-https://23tkt4cqz3.execute-api.ap-south-1.amazonaws.com/prod
+https://ak-store-rxl.vercel.app
 ```
 
 ### Local backend testing from Android emulator
@@ -344,7 +344,7 @@ If backend changes:
 Run from repo root:
 
 ```powershell
-npx serverless deploy --verbose
+aws ssm send-command --region ap-south-1 --cli-input-json file://deploy/ec2/deploy-public-repo-command-v2.json
 ```
 
 If frontend changes:

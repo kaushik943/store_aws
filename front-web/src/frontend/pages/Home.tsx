@@ -568,8 +568,7 @@ export const Home: React.FC<HomeProps> = ({
             <button
               onClick={() => {
                 if (showAllCats) {
-                  setSelectedCategory(0);
-                  setView('categories');
+                  setShowAllCats(false);
                 } else {
                   setShowAllCats(true);
                 }

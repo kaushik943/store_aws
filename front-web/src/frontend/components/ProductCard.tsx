@@ -26,8 +26,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const imagePadding = compact ? 'p-0.5' : 'p-1.5 sm:p-2';
   const contentPadding = compact ? 'p-1.5 gap-0.5' : 'p-2.5 sm:p-3 gap-1';
   const nameClass = compact
-    ? 'min-h-[1.45rem] text-[10px] sm:text-[11px]'
-    : 'min-h-[1.8rem] text-[11px] md:text-[12px]';
+    ? 'min-h-[2.5rem] text-[10px] sm:text-[11px]'
+    : 'min-h-[3rem] text-[11px] md:text-[12px]';
   const priceClass = compact ? 'text-[11px] sm:text-[12px]' : 'text-[13px] md:text-sm';
   const controlHeight = compact ? 'h-6.5' : 'h-8';
   const controlMinWidth = compact ? 'min-w-[62px]' : 'min-w-[76px]';
@@ -76,26 +76,26 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         )}
       </div>
 
-      <div className={`${contentPadding} flex flex-col bg-white dark:bg-slate-900`}>
-        <h4 className={`${nameClass} font-bold text-slate-800 dark:text-slate-100 line-clamp-2 leading-[1.08]`}>
+      <div className={`${contentPadding} flex h-full flex-col bg-white dark:bg-slate-900`}>
+        <h4 className={`${nameClass} overflow-hidden font-bold text-slate-800 dark:text-slate-100 line-clamp-2 leading-[1.25]`}>
           {product.name}
         </h4>
 
-        <div className="flex items-start justify-between gap-2 sm:block">
-          <div className="flex flex-col leading-none gap-0">
+        <div className="mt-1 flex min-h-[2.1rem] items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
             <span className={`${priceClass} font-black text-slate-900 dark:text-white`}>{"\u20B9"}{product.price}</span>
             {product.mrp && product.mrp > product.price ? (
-              <span className="text-[9px] text-slate-400 line-through font-medium">{"\u20B9"}{product.mrp}</span>
+              <span className="mt-0.5 block text-[9px] text-slate-400 line-through font-medium">{"\u20B9"}{product.mrp}</span>
             ) : (
-              <span className="text-[9px] opacity-0">{"\u20B9"}0</span>
+              <span className="mt-0.5 block text-[9px] opacity-0">{"\u20B9"}0</span>
             )}
           </div>
-          <p className="pt-0.5 text-[9px] font-semibold text-slate-400 dark:text-slate-500 truncate leading-none text-right sm:pt-0 sm:mt-0.5 sm:text-left">
+          <p className="max-w-[42%] rounded-full bg-slate-50 px-2 py-1 text-[9px] font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400 truncate leading-none text-right shrink-0">
             {product.unit}
           </p>
         </div>
 
-        <div className="flex items-end justify-end gap-1 pt-0.5">
+        <div className="mt-auto flex items-end justify-end gap-1 pt-1">
           {isOutOfStock ? (
             <div className={`${controlMinWidth} px-2 ${controlHeight} flex items-center justify-center bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 rounded-xl font-black text-[8px] uppercase tracking-tight shrink-0 cursor-not-allowed`}>
               Out
