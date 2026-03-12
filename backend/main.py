@@ -6,7 +6,6 @@ from dotenv import load_dotenv
 from datetime import datetime, timedelta
 from typing import List, Optional
 import uuid
-import boto3
 from email.mime.text import MIMEText
 
 from fastapi import FastAPI, Depends, HTTPException, Header, File, UploadFile
@@ -156,39 +155,10 @@ def send_otp_email_via_smtp(email: str, otp: str) -> bool:
 
 
 def send_otp_email(email: str, otp: str) -> bool:
-    ses_from_email = os.getenv("SES_FROM_EMAIL", "").strip()
-    aws_region = os.getenv("AWS_REGION", "ap-south-1")
-    configuration_set = os.getenv("SES_CONFIGURATION_SET", "").strip()
-
-    if not ses_from_email:
-        if send_otp_email_via_smtp(email, otp):
-            return True
-        print(f"[DEV MODE] OTP for {email} is {otp}")
+    if send_otp_email_via_smtp(email, otp):
         return True
-
-    request = {
-        "Source": ses_from_email,
-        "Destination": {"ToAddresses": [email]},
-        "Message": {
-            "Subject": {"Data": "Your AK Store Login OTP"},
-            "Body": {
-                "Text": {
-                    "Data": f"Your OTP for login is: {otp}. It is valid for 10 minutes."
-                }
-            },
-        },
-    }
-    if configuration_set:
-        request["ConfigurationSetName"] = configuration_set
-
-    try:
-        boto3.client("ses", region_name=aws_region).send_email(**request)
-        return True
-    except Exception as e:
-        print(f"SES OTP send error: {e}")
-        if send_otp_email_via_smtp(email, otp):
-            return True
-        return False
+    print(f"[DEV MODE] OTP for {email} is {otp}")
+    return True
 
 # ---- Authentication Functions ----
 def get_current_user(authorization: Optional[str] = Header(None)):
