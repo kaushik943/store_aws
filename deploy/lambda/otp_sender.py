@@ -78,9 +78,22 @@ def _response(status_code: int, body: dict) -> dict:
     return {"statusCode": status_code, "body": json.dumps(body)}
 
 
+def _parse_event_payload(event) -> dict:
+    payload = event or {}
+    if isinstance(payload, dict) and isinstance(payload.get("body"), str):
+        try:
+            body = json.loads(payload["body"])
+            if isinstance(body, dict):
+                return body
+        except json.JSONDecodeError:
+            pass
+    return payload if isinstance(payload, dict) else {}
+
+
 def handler(event, context):
-    phone = str((event or {}).get("phone") or "").strip()
-    email = str((event or {}).get("email") or "").strip()
+    payload = _parse_event_payload(event)
+    phone = str(payload.get("phone") or "").strip()
+    email = str(payload.get("email") or "").strip()
     if not phone or not email:
         return _response(400, {"success": False, "error": "Missing phone or email"})
 
