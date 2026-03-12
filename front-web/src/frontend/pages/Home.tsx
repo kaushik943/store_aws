@@ -203,6 +203,7 @@ export const Home: React.FC<HomeProps> = ({
                   addToCart={addToCart}
                   removeFromCart={removeFromCart}
                   onClick={setSelectedProductForModal}
+                  compact
                 />
               ))}
             </div>
@@ -238,6 +239,7 @@ export const Home: React.FC<HomeProps> = ({
                         addToCart={addToCart}
                         removeFromCart={removeFromCart}
                         onClick={setSelectedProductForModal}
+                        compact
                       />
                     ))}
                   </div>
@@ -261,6 +263,7 @@ export const Home: React.FC<HomeProps> = ({
                         addToCart={addToCart}
                         removeFromCart={removeFromCart}
                         onClick={setSelectedProductForModal}
+                        compact
                       />
                     ))}
                   </div>
