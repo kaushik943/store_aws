@@ -11,24 +11,24 @@
 
 - `backend/` -> FastAPI backend
 - `backend/requirements.txt` -> backend Python dependencies
-- `deploy/ec2/ak-store-api.service` -> systemd service for Gunicorn
+- `deploy/ec2/ak-store-api.service.template` -> systemd service template for Gunicorn
 - `deploy/ec2/nginx-ak-store.conf` -> Nginx reverse proxy config
 - `deploy/ec2/setup-server.sh` -> first-time EC2 server setup
 - `deploy/ec2/deploy-backend.sh` -> backend deploy/restart script on EC2
 - `front-web/vercel.ec2.template.json` -> Vercel rewrite template for EC2 cutover
 - `START_AK_STORE.bat` -> local frontend + backend startup
 
-## Current Live URLs Before Cutover
+## Current Live URLs
 
 - Frontend: `https://ak-store-rxl.vercel.app`
-- Lambda backend: `https://23tkt4cqz3.execute-api.ap-south-1.amazonaws.com/prod`
+- EC2 backend: `http://65.1.105.90`
 
 ## What Stays On AWS
 
 - DynamoDB tables stay as-is
 - S3 upload bucket stays as-is
-- SMTP stays as-is
-- only the FastAPI compute layer moves from Lambda to EC2
+- OTP emails use AWS SES
+- the FastAPI compute layer now runs on EC2
 
 ## 1. Create EC2
 
@@ -71,8 +71,8 @@ DATABASE_TYPE=dynamodb
 AWS_REGION=ap-south-1
 UPLOADS_BUCKET=ak-store-api-prod-007222077181-uploads
 SECRET_KEY=replace-with-strong-secret
-SMTP_EMAIL=your-smtp-email
-SMTP_PASSWORD=your-smtp-password
+SES_FROM_EMAIL=verified-ses-sender@example.com
+SES_CONFIGURATION_SET=
 CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,https://ak-store-rxl.vercel.app,http://YOUR_EC2_PUBLIC_HOST
 ```
 
@@ -131,23 +131,11 @@ Expected response:
 {"status":"ok","database":"DynamoDB","region":"ap-south-1"}
 ```
 
-## 6. Cut Vercel Over To EC2
+## 6. Frontend Routing
 
-After the EC2 backend is working:
+Vercel already routes `/api/*` and `/uploads/*` to the EC2 backend through `front-web/vercel.json`.
 
-1. open `front-web/vercel.ec2.template.json`
-2. replace `YOUR_EC2_PUBLIC_HOST` with your Elastic IP or domain
-3. copy that content into `front-web/vercel.json`
-4. redeploy the frontend
-
-Redeploy command:
-
-```powershell
-cd front-web
-npx vercel --prod
-```
-
-After that, verify:
+Verify:
 
 - `https://ak-store-rxl.vercel.app/api/health`
 - `https://ak-store-rxl.vercel.app`
@@ -163,14 +151,9 @@ sudo certbot --nginx -d api.yourdomain.com
 
 Then point Vercel rewrites to `https://api.yourdomain.com` instead of raw EC2 IP.
 
-## 8. Remove Lambda After Cutover
+## 8. Cleanup
 
-Only after Vercel is confirmed against EC2:
-
-- stop using `serverless.yml`
-- optionally delete Lambda function
-- optionally delete API Gateway
-- keep DynamoDB and S3
+Delete Lambda and API Gateway only after EC2 is confirmed stable.
 
 Do not delete:
 

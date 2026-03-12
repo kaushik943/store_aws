@@ -1,12 +1,11 @@
 import os
 import random
-import smtplib
 import hashlib
-from smtplib import SMTP_SSL
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
 from typing import List, Optional
 import uuid
+import boto3
 
 from fastapi import FastAPI, Depends, HTTPException, Header, File, UploadFile
 from fastapi.responses import JSONResponse
@@ -14,15 +13,6 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from jose import JWTError, jwt
 import shutil
-
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-
-# Lambda handler (for AWS Lambda deployment)
-try:
-    from mangum import Mangum
-except ImportError:
-    pass
 
 # Import DynamoDB database functions
 from .database_dynamodb import (
@@ -119,32 +109,36 @@ def create_access_token(data: dict):
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 # ---- Email Service ----
-def send_otp_email(email: str, otp: str):
-    smtp_email = os.getenv("SMTP_EMAIL")
-    smtp_pass = os.getenv("SMTP_PASSWORD")
-    if not smtp_email or not smtp_pass:
-        print(f"[DEV MODE] OTP for {email} is {otp}")
-        return
+def send_otp_email(email: str, otp: str) -> bool:
+    ses_from_email = os.getenv("SES_FROM_EMAIL", "").strip()
+    aws_region = os.getenv("AWS_REGION", "ap-south-1")
+    configuration_set = os.getenv("SES_CONFIGURATION_SET", "").strip()
 
-    msg = MIMEMultipart()
-    msg['From'] = smtp_email
-    msg['To'] = email
-    msg['Subject'] = 'Your AK Store Login OTP'
-    msg.attach(MIMEText(f'Your OTP for login is: {otp}. It is valid for 10 minutes.', 'plain'))
+    if not ses_from_email:
+        print(f"[DEV MODE] OTP for {email} is {otp}")
+        return True
+
+    request = {
+        "Source": ses_from_email,
+        "Destination": {"ToAddresses": [email]},
+        "Message": {
+            "Subject": {"Data": "Your AK Store Login OTP"},
+            "Body": {
+                "Text": {
+                    "Data": f"Your OTP for login is: {otp}. It is valid for 10 minutes."
+                }
+            },
+        },
+    }
+    if configuration_set:
+        request["ConfigurationSetName"] = configuration_set
 
     try:
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
-            server.login(str(smtp_email), str(smtp_pass))
-            server.sendmail(str(smtp_email), email, msg.as_string())
+        boto3.client("ses", region_name=aws_region).send_email(**request)
+        return True
     except Exception as e:
-        print(f"Error sending email: {e}")
-        try:
-            with smtplib.SMTP('smtp.gmail.com', 587) as server:
-                server.starttls()
-                server.login(str(smtp_email), str(smtp_pass))
-                server.sendmail(str(smtp_email), email, msg.as_string())
-        except Exception as e2:
-            print(f"Error on fallback Port 587: {e2}")
+        print(f"SES OTP send error: {e}")
+        return False
 
 # ---- Authentication Functions ----
 def get_current_user(authorization: Optional[str] = Header(None)):
@@ -273,8 +267,9 @@ def request_otp(creds: schemas.AuthOtp):
     expiry = (datetime.now() + timedelta(minutes=10)).isoformat()
     
     update_user(creds.phone, {"otp": otp, "otp_expiry": expiry})
-    send_otp_email(user["email"], otp)
-    
+    if not send_otp_email(user["email"], otp):
+        return JSONResponse(status_code=500, content={"error": "Failed to send OTP email"})
+
     return {"success": True, "message": "OTP sent to registered email"}
 
 @app.post("/api/auth/verify-otp")
@@ -791,11 +786,3 @@ upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "upl
 os.makedirs(upload_dir, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=upload_dir), name="uploads")
 
-# ---- LAMBDA HANDLER (for AWS Lambda + API Gateway) ----
-# This wraps the FastAPI app with Mangum ASGI adapter for Lambda
-try:
-    from mangum import Mangum
-    handler = Mangum(app, lifespan="off")
-except ImportError:
-    # Fallback if Mangum is not available (local dev)
-    handler = None

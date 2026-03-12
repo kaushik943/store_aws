@@ -26,8 +26,8 @@ Create a local file such as `deploy/ec2/prod.env`:
 AWS_REGION=ap-south-1
 UPLOADS_BUCKET=ak-store-api-prod-007222077181-uploads
 SECRET_KEY=replace-with-a-long-random-secret
-SMTP_EMAIL=your-smtp-email
-SMTP_PASSWORD=your-smtp-password
+SES_FROM_EMAIL=verified-ses-sender@example.com
+SES_CONFIGURATION_SET=
 CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,https://ak-store-rxl.vercel.app,http://YOUR_EC2_PUBLIC_IP
 ```
 
@@ -91,7 +91,7 @@ Expected:
 {"status":"ok","database":"DynamoDB","region":"ap-south-1"}
 ```
 
-## 6. Cut Vercel from Lambda to EC2
+## 6. Frontend Routing
 
 Update `front-web/vercel.json` to point `/api/*` and `/uploads/*` to `http://YOUR_EC2_PUBLIC_IP/...`, then redeploy the frontend.
 
@@ -105,6 +105,5 @@ Push code changes to your repo, then rerun:
 
 ## Notes
 
-- Existing Lambda config remains in `serverless.yml`, but EC2 no longer depends on it.
 - DynamoDB and S3 stay unchanged.
 - For production HTTPS, point a domain to the Elastic IP and add TLS at nginx.
