@@ -89,7 +89,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         </div>
       </div>
 
-      <div className={`flex h-full flex-col bg-white px-1 pt-5 ${compact ? 'pb-1' : 'pb-2'}`}>
+      <div className={`flex h-full flex-col bg-white px-1 pt-5 ${compact ? 'pb-0.5' : 'pb-1'}`}>
         <div className="mt-1 flex flex-wrap items-center gap-2">
           <span className={`rounded-[0.65rem] bg-[#2e8b45] font-black leading-none text-white shadow-[0_4px_0_#1e5a2d] ${pricePillClass}`}>
             {"\u20B9"}{product.price}
@@ -108,12 +108,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </div>
         )}
 
-        <h4 className={`${nameClass} mt-3 min-h-[4.25rem] overflow-hidden font-semibold text-slate-900 line-clamp-3`}>
+        <h4 className={`${nameClass} mt-3 min-h-[3.65rem] overflow-hidden font-semibold text-slate-900 line-clamp-3`}>
           {product.name}
         </h4>
 
         {showUnit && (
-          <p className="mt-2 text-[11px] font-medium text-slate-500 line-clamp-1">
+          <p className="mt-1 text-[11px] font-medium text-slate-500 line-clamp-1">
             {product.unit}
           </p>
         )}
