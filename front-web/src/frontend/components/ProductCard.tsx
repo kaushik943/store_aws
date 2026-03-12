@@ -44,6 +44,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <img
           src={product.image}
           alt={product.name}
+          loading="lazy"
+          decoding="async"
           className={`w-full h-full object-contain ${imagePadding} mix-blend-multiply dark:mix-blend-normal group-hover:scale-110 transition-transform duration-500 ${isOutOfStock ? 'grayscale opacity-60' : ''}`}
           referrerPolicy="no-referrer"
         />

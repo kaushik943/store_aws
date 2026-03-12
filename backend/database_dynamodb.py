@@ -1,4 +1,5 @@
 import os
+import time
 from decimal import Decimal
 from typing import Any, Optional
 from urllib.parse import quote
@@ -26,6 +27,14 @@ PICKUP_LOCATIONS_TABLE = "PickupLocations"
 PICKUP_SLOTS_TABLE = "PickupSlots"
 COUPONS_TABLE = "Coupons"
 
+_CACHE_TTLS = {
+    "users": 20,
+    "products": 30,
+    "categories": 120,
+    "cart_counts": 10,
+}
+_CACHE: dict[str, dict[str, Any]] = {}
+
 
 def _resource_kwargs(service_name: str) -> dict:
     kwargs = {"service_name": service_name, "region_name": REGION}
@@ -43,6 +52,26 @@ dynamodb_client = boto3.client(**_resource_kwargs("dynamodb"))
 
 def _table(name: str):
     return dynamodb.Table(name)
+
+
+def _get_cached(key: str):
+    entry = _CACHE.get(key)
+    if not entry:
+        return None
+    if entry["expires_at"] < time.time():
+        _CACHE.pop(key, None)
+        return None
+    return entry["value"]
+
+
+def _set_cached(key: str, value: Any, ttl: int):
+    _CACHE[key] = {"value": value, "expires_at": time.time() + ttl}
+    return value
+
+
+def _invalidate_cache(*keys: str) -> None:
+    for key in keys:
+        _CACHE.pop(key, None)
 
 
 def _serialize(value: Any) -> Any:
@@ -223,6 +252,7 @@ def get_user(phone: str):
 def create_user(user_data: dict):
     try:
         _table(USERS_TABLE).put_item(Item=user_data)
+        _invalidate_cache("users")
         return True
     except Exception as e:
         print(f"Error creating user: {e}")
@@ -255,6 +285,7 @@ def update_user(phone: str, updates: dict):
             ExpressionAttributeNames=expr_names,
             ExpressionAttributeValues=expr_values,
         )
+        _invalidate_cache("users")
         return True
     except Exception as e:
         print(f"Error updating user: {e}")
@@ -267,6 +298,7 @@ def delete_user(phone: str):
         for address in get_user_addresses(phone):
             delete_address(address["id"])
         clear_user_cart(phone)
+        _invalidate_cache("users")
         return True
     except Exception as e:
         print(f"Error deleting user: {e}")
@@ -275,7 +307,11 @@ def delete_user(phone: str):
 
 def get_all_users():
     try:
-        return [_serialize(item) for item in _scan_all(USERS_TABLE)]
+        cached = _get_cached("users")
+        if cached is not None:
+            return cached
+        users = [_serialize(item) for item in _scan_all(USERS_TABLE)]
+        return _set_cached("users", users, _CACHE_TTLS["users"])
     except Exception as e:
         print(f"Error getting users: {e}")
         return []
@@ -293,7 +329,11 @@ def get_product(product_id: int):
 
 def get_all_products():
     try:
-        return [_normalize_product(item) for item in _scan_all(PRODUCTS_TABLE)]
+        cached = _get_cached("products")
+        if cached is not None:
+            return cached
+        products = [_normalize_product(item) for item in _scan_all(PRODUCTS_TABLE)]
+        return _set_cached("products", products, _CACHE_TTLS["products"])
     except Exception as e:
         print(f"Error getting products: {e}")
         return []
@@ -306,6 +346,7 @@ def create_product(product_data: dict):
         payload.setdefault("stock", 0)
         payload.setdefault("out_of_stock", False)
         _table(PRODUCTS_TABLE).put_item(Item=_to_decimal(payload))
+        _invalidate_cache("products")
         return _serialize(payload["id"])
     except Exception as e:
         print(f"Error creating product: {e}")
@@ -324,6 +365,7 @@ def update_product(product_id: int, updates: dict):
             ExpressionAttributeNames=expr_names,
             ExpressionAttributeValues=expr_values,
         )
+        _invalidate_cache("products")
         return True
     except Exception as e:
         print(f"Error updating product: {e}")
@@ -333,6 +375,7 @@ def update_product(product_id: int, updates: dict):
 def delete_product(product_id: int):
     try:
         _table(PRODUCTS_TABLE).delete_item(Key={"id": Decimal(str(product_id))})
+        _invalidate_cache("products")
         return True
     except Exception as e:
         print(f"Error deleting product: {e}")
@@ -341,7 +384,11 @@ def delete_product(product_id: int):
 
 def get_all_categories():
     try:
-        return [_normalize_category(item) for item in _scan_all(CATEGORIES_TABLE)]
+        cached = _get_cached("categories")
+        if cached is not None:
+            return cached
+        categories = [_normalize_category(item) for item in _scan_all(CATEGORIES_TABLE)]
+        return _set_cached("categories", categories, _CACHE_TTLS["categories"])
     except Exception as e:
         print(f"Error getting categories: {e}")
         return []
@@ -352,6 +399,7 @@ def create_category(category_data: dict):
         payload = dict(category_data)
         payload["id"] = Decimal(str(payload.get("id") or _next_numeric_id(CATEGORIES_TABLE)))
         _table(CATEGORIES_TABLE).put_item(Item=_to_decimal(payload))
+        _invalidate_cache("categories")
         return _serialize(payload["id"])
     except Exception as e:
         print(f"Error creating category: {e}")
@@ -361,6 +409,7 @@ def create_category(category_data: dict):
 def delete_category(category_id: int):
     try:
         _table(CATEGORIES_TABLE).delete_item(Key={"id": Decimal(str(category_id))})
+        _invalidate_cache("categories")
         return True
     except Exception as e:
         print(f"Error deleting category: {e}")
@@ -497,6 +546,7 @@ def clear_user_cart(user_phone: str):
         with _table(CART_ITEMS_TABLE).batch_writer() as batch:
             for item in items:
                 batch.delete_item(Key={"user_phone": user_phone, "product_id": item["product_id"]})
+        _invalidate_cache("cart_counts")
         return True
     except Exception as e:
         print(f"Error clearing cart: {e}")
@@ -515,6 +565,7 @@ def replace_user_cart(user_phone: str, items: list[dict]):
                         "quantity": Decimal(str(item["quantity"])),
                     }
                 )
+        _invalidate_cache("cart_counts")
         return True
     except Exception as e:
         print(f"Error replacing cart: {e}")
@@ -546,11 +597,14 @@ def get_user_cart(user_phone: str):
 
 
 def get_all_cart_counts() -> dict[str, list[dict]]:
+    cached = _get_cached("cart_counts")
+    if cached is not None:
+        return cached
     grouped: dict[str, list[dict]] = {}
     for item in _scan_all(CART_ITEMS_TABLE):
         phone = item["user_phone"]
         grouped.setdefault(phone, []).append(_serialize(item))
-    return grouped
+    return _set_cached("cart_counts", grouped, _CACHE_TTLS["cart_counts"])
 
 
 def get_reviews(product_id: int):

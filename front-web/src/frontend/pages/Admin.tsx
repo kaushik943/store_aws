@@ -160,12 +160,17 @@ export const Admin: React.FC<AdminProps> = ({ user, setView, products, categorie
 
   useEffect(() => {
     fetchStats();
-    fetchOrders();
-    fetchUsers();
-    fetchCoupons();
-    fetchDeliverySlots();
-    fetchPickup();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'orders') fetchOrders();
+    if (activeTab === 'users' || activeTab === 'carts') fetchUsers();
+    if (activeTab === 'discounts') {
+      fetchCoupons();
+      fetchDeliverySlots();
+    }
+    if (activeTab === 'pickup') fetchPickup();
+  }, [activeTab]);
 
   const fetchStats = async () => {
     const res = await fetch('/api/admin/stats', { headers: { 'Authorization': user?.token || '' } });

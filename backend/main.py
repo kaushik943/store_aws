@@ -489,6 +489,11 @@ def delete_category_endpoint(category_id: int, admin: dict = Depends(get_current
 def get_users(admin: dict = Depends(get_current_admin)):
     users = get_all_users()
     cart_counts = get_all_cart_counts()
+    product_prices = {
+        int(product["id"]): float(product.get("price", 0))
+        for product in get_all_products()
+        if product.get("id") is not None
+    }
     return [{
         "id": _user_id_from_phone(u["phone"]),
         "phone": u["phone"],
@@ -500,7 +505,7 @@ def get_users(admin: dict = Depends(get_current_admin)):
         "otp_expiry": u.get("otp_expiry"),
         "otp_delivery_status": u.get("otp_delivery_status"),
         "cart_count": sum(int(item.get("quantity", 0)) for item in cart_counts.get(u["phone"], [])),
-        "cart_total": round(sum(float((get_product(int(item["product_id"])) or {}).get("price", 0)) * int(item.get("quantity", 0)) for item in cart_counts.get(u["phone"], [])), 2),
+        "cart_total": round(sum(product_prices.get(int(item["product_id"]), 0) * int(item.get("quantity", 0)) for item in cart_counts.get(u["phone"], [])), 2),
     } for u in users]
 
 class UserUpdate(BaseModel):
