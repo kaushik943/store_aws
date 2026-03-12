@@ -729,6 +729,7 @@ export const Home: React.FC<HomeProps> = ({
                         removeFromCart={removeFromCart}
                         onClick={setSelectedProductForModal}
                         compact
+                        blendBg
                       />
                     ))}
                     {catProducts.length > 7 && (

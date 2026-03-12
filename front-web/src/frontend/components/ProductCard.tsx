@@ -11,10 +11,11 @@ interface ProductCardProps {
   onDelete?: (id: number) => void;
   onClick?: (p: Product) => void;
   compact?: boolean;
+  blendBg?: boolean;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({
-  product, cartItem, addToCart, removeFromCart, onClick, compact = false
+  product, cartItem, addToCart, removeFromCart, onClick, compact = false, blendBg = false
 }) => {
   const discount = product.mrp && product.mrp > product.price
     ? Math.round(((product.mrp - product.price) / product.mrp) * 100)
@@ -33,10 +34,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   return (
     <div
-      className={`group flex w-full cursor-pointer flex-col bg-white ${isOutOfStock ? 'opacity-90' : ''}`}
+      className={`group flex w-full cursor-pointer flex-col ${blendBg ? 'bg-transparent' : 'bg-white'} ${isOutOfStock ? 'opacity-90' : ''}`}
       onClick={() => onClick?.(product)}
     >
-      <div className="relative flex aspect-square w-full items-center justify-center rounded-[1rem] border border-slate-200 bg-white">
+      <div className={`relative flex aspect-square w-full items-center justify-center rounded-[1rem] border border-slate-200 ${blendBg ? 'bg-transparent' : 'bg-white'}`}>
         <img
           src={imageSrc}
           alt={product.name}
@@ -94,7 +95,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         </div>
       </div>
 
-      <div className={`flex h-full flex-col bg-white px-1 pt-4 ${compact ? 'pb-0' : 'pb-0.5'}`}>
+      <div className={`flex h-full flex-col ${blendBg ? 'bg-transparent' : 'bg-white'} px-1 pt-4 ${compact ? 'pb-0' : 'pb-0.5'}`}>
         <div className="mt-1 flex flex-wrap items-center gap-2">
           <span className={`rounded-[0.65rem] bg-[#2e8b45] font-black leading-none text-white shadow-[0_4px_0_#1e5a2d] ${pricePillClass}`}>
             {"\u20B9"}{product.price}
