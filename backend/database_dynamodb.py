@@ -317,6 +317,21 @@ def get_all_users():
         return []
 
 
+def get_users_page(limit: int = 200, start_phone: str | None = None):
+    try:
+        kwargs: dict = {"Limit": int(limit)}
+        if start_phone:
+            kwargs["ExclusiveStartKey"] = {"phone": start_phone}
+        response = _table(USERS_TABLE).scan(**kwargs)
+        items = [_serialize(item) for item in response.get("Items", [])]
+        lek = response.get("LastEvaluatedKey") or None
+        next_start_phone = lek.get("phone") if isinstance(lek, dict) else None
+        return items, next_start_phone
+    except Exception as e:
+        print(f"Error getting users page: {e}")
+        return [], None
+
+
 def get_product(product_id: int):
     try:
         response = _table(PRODUCTS_TABLE).get_item(Key={"id": Decimal(str(product_id))})

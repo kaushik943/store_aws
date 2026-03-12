@@ -45,6 +45,7 @@ from .database_dynamodb import (
     get_all_orders,
     get_all_products,
     get_all_users,
+    get_users_page,
     get_coupon_by_code,
     get_coupons,
     get_delivery_slots,
@@ -486,8 +487,8 @@ def delete_category_endpoint(category_id: int, admin: dict = Depends(get_current
 # ---- USER MANAGEMENT ROUTES ----
 
 @app.get("/api/admin/users")
-def get_users(include_cart: bool = False, admin: dict = Depends(get_current_admin)):
-    users = get_all_users()
+def get_users(limit: int = 200, start_phone: Optional[str] = None, include_cart: bool = False, admin: dict = Depends(get_current_admin)):
+    users, next_start_phone = get_users_page(limit=limit, start_phone=start_phone)
     cart_counts = get_all_cart_counts() if include_cart else {}
     product_prices = (
         {
@@ -498,7 +499,7 @@ def get_users(include_cart: bool = False, admin: dict = Depends(get_current_admi
         if include_cart
         else {}
     )
-    return [{
+    items = [{
         "id": _user_id_from_phone(u["phone"]),
         "phone": u["phone"],
         "name": u["name"],
@@ -508,9 +509,10 @@ def get_users(include_cart: bool = False, admin: dict = Depends(get_current_admi
         "otp": u.get("otp"),
         "otp_expiry": u.get("otp_expiry"),
         "otp_delivery_status": u.get("otp_delivery_status"),
-        "cart_count": sum(int(item.get("quantity", 0)) for item in cart_counts.get(u["phone"], [])),
-        "cart_total": round(sum(product_prices.get(int(item["product_id"]), 0) * int(item.get("quantity", 0)) for item in cart_counts.get(u["phone"], [])), 2),
+        "cart_count": sum(int(item.get("quantity", 0)) for item in cart_counts.get(u["phone"], [])) if include_cart else 0,
+        "cart_total": round(sum(product_prices.get(int(item["product_id"]), 0) * int(item.get("quantity", 0)) for item in cart_counts.get(u["phone"], [])), 2) if include_cart else 0,
     } for u in users]
+    return {"items": items, "next_start_phone": next_start_phone}
 
 class UserUpdate(BaseModel):
     name: str

@@ -15,6 +15,8 @@ export const Admin: React.FC<AdminProps> = ({ user, setView, products, categorie
   const [stats, setStats] = useState<any>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [usersNext, setUsersNext] = useState<string | null>(null);
+  const [usersLoading, setUsersLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'stats' | 'orders' | 'products' | 'users' | 'carts' | 'discounts' | 'pickup'>(() => {
     return (localStorage.getItem('adminTab') as any) || 'stats';
   });
@@ -166,7 +168,7 @@ export const Admin: React.FC<AdminProps> = ({ user, setView, products, categorie
 
   useEffect(() => {
     if (activeTab === 'orders') fetchOrders();
-    if (activeTab === 'users' || activeTab === 'carts') fetchUsers();
+    if (activeTab === 'users' || activeTab === 'carts') fetchUsers('reset');
     if (activeTab === 'discounts') {
       fetchCoupons();
       fetchDeliverySlots();
@@ -188,13 +190,21 @@ export const Admin: React.FC<AdminProps> = ({ user, setView, products, categorie
     } catch (e) { console.error(e); }
   };
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (mode: 'reset' | 'more' = 'reset') => {
     try {
+      setUsersLoading(true);
       const includeCart = activeTab === 'carts';
-      const res = await fetch(`/api/admin/users?include_cart=${includeCart ? 'true' : 'false'}`, { headers: { 'Authorization': user?.token || '' } });
-      const data = await res.json();
-      if (Array.isArray(data)) setUsers(data);
+      const startPhone = mode === 'more' ? usersNext : null;
+      const url = `/api/admin/users?include_cart=${includeCart ? 'true' : 'false'}&limit=200${startPhone ? `&start_phone=${encodeURIComponent(startPhone)}` : ''}`;
+      const res = await fetch(url, { headers: { 'Authorization': user?.token || '' } });
+      const data = await res.json().catch(() => ({}));
+      const items = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : []);
+      const next = typeof data?.next_start_phone === 'string' ? data.next_start_phone : null;
+      if (mode === 'more') setUsers(prev => [...prev, ...items]);
+      else setUsers(items);
+      setUsersNext(next);
     } catch (e) { console.error(e); }
+    finally { setUsersLoading(false); }
   };
 
   const fetchCoupons = async () => {
@@ -923,6 +933,9 @@ export const Admin: React.FC<AdminProps> = ({ user, setView, products, categorie
 
         {activeTab === 'users' && (
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden overflow-x-auto">
+            {usersLoading && (
+              <div className="px-6 py-4 text-xs font-bold text-slate-500">Loading users...</div>
+            )}
             <table className="w-full text-left">
               <thead className="bg-slate-50 dark:bg-slate-950 border-b border-slate-100 dark:border-slate-800">
                 <tr>
@@ -1021,6 +1034,17 @@ export const Admin: React.FC<AdminProps> = ({ user, setView, products, categorie
                 ))}
               </tbody>
             </table>
+            {usersNext && (
+              <div className="px-6 py-4">
+                <button
+                  disabled={usersLoading}
+                  onClick={() => fetchUsers('more')}
+                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs uppercase"
+                >
+                  {usersLoading ? 'Loading...' : 'Load more'}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
