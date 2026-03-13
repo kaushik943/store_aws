@@ -204,6 +204,7 @@ export const Home: React.FC<HomeProps> = ({
                   removeFromCart={removeFromCart}
                   onClick={setSelectedProductForModal}
                   compact
+                  addVariant="small"
                 />
               ))}
             </div>
@@ -240,6 +241,7 @@ export const Home: React.FC<HomeProps> = ({
                         removeFromCart={removeFromCart}
                         onClick={setSelectedProductForModal}
                         compact
+                        addVariant="small"
                       />
                     ))}
                   </div>
@@ -264,6 +266,7 @@ export const Home: React.FC<HomeProps> = ({
                         removeFromCart={removeFromCart}
                         onClick={setSelectedProductForModal}
                         compact
+                        addVariant="small"
                       />
                     ))}
                   </div>

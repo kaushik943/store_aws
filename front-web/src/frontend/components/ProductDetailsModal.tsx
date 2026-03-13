@@ -61,6 +61,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
   const discount = product.mrp && product.mrp > product.price
     ? Math.round(((product.mrp - product.price) / product.mrp) * 100)
     : 0;
+  const descriptionText = (product.description || '').trim();
 
   const avgRating = reviews.length > 0
     ? (reviews.reduce((a, b) => a + b.rating, 0) / reviews.length).toFixed(1)
@@ -229,12 +230,12 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
               <div className="p-4 md:p-8">
                 {activeTab === 'details' && (
                   <div className="space-y-5">
-                    {product.description && (
-                      <div className="space-y-2">
-                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Description</h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{product.description}</p>
-                      </div>
-                    )}
+                    <div className="space-y-2">
+                      <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Description</h3>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                        {descriptionText || 'Not available'}
+                      </p>
+                    </div>
                     {product.highlights && (
                       <div className="space-y-2">
                         <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Key Highlights</h3>
