@@ -29,17 +29,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const nameClass = compact ? 'text-[11px] leading-[1.22]' : 'text-[12px] leading-[1.24]';
   const unitClass = compact ? 'text-[10px]' : 'text-[11px]';
   const pricePillClass = compact ? 'text-[13px] px-3 py-1.5' : 'text-[14px] px-3 py-1.5';
-  const controlHeight = compact ? 'h-9' : 'h-11';
-  const controlMinWidth = compact ? 'min-w-[80px]' : 'min-w-[98px]';
-  const qtyMinWidth = compact ? 'min-w-[86px]' : 'min-w-[104px]';
+  const isSmallCta = compact && addVariant === 'small';
+  const controlHeight = isSmallCta ? 'h-8' : (compact ? 'h-9' : 'h-11');
+  const controlMinWidth = isSmallCta ? 'min-w-[75px]' : (compact ? 'min-w-[80px]' : 'min-w-[98px]');
+  const qtyMinWidth = isSmallCta ? 'min-w-[75px]' : (compact ? 'min-w-[86px]' : 'min-w-[104px]');
   const controlText = compact ? 'text-[9px]' : 'text-[10px]';
-  const addText = addVariant === 'small' ? (compact ? 'text-[10px]' : 'text-[11px]') : (compact ? 'text-[11px]' : 'text-[11px]');
-  const addControlHeight = addVariant === 'small' ? controlHeight : (compact ? 'h-10' : controlHeight);
-  const addControlMinWidth = addVariant === 'small' ? controlMinWidth : (compact ? 'min-w-[92px]' : controlMinWidth);
-  const addPadX = addVariant === 'small' ? 'px-3' : 'px-4';
-  const stepBtnWidth = compact ? 'w-7' : 'w-8';
-  const stepIconSize = compact ? 10 : 11;
-  const qtyText = compact ? 'text-[10px]' : 'text-[11px]';
+  const addText = isSmallCta ? 'text-[9px]' : (compact ? 'text-[11px]' : 'text-[11px]');
+  const addControlHeight = isSmallCta ? 'h-8' : (compact ? 'h-10' : controlHeight);
+  const addControlMinWidth = isSmallCta ? 'min-w-[75px]' : (compact ? 'min-w-[92px]' : controlMinWidth);
+  const addPadX = isSmallCta ? 'px-3' : 'px-4';
+  const stepBtnWidth = isSmallCta ? 'w-6' : (compact ? 'w-7' : 'w-8');
+  const stepIconSize = isSmallCta ? 9 : (compact ? 10 : 11);
+  const qtyText = isSmallCta ? 'text-[9px]' : (compact ? 'text-[10px]' : 'text-[11px]');
   const badgeText = compact ? 'text-[8px]' : 'text-[9px]';
   const savings = product.mrp && product.mrp > product.price ? Math.round(product.mrp - product.price) : 0;
   const imageSrc = product.image || 'https://placehold.co/300x300/f3f4f6/9ca3af?text=Product';
@@ -73,7 +74,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         </div>
 
         {/* Keep controls inside the image box so they don't overlap the name/unit area (tap should open details). */}
-        <div className="absolute bottom-2 right-1 z-10">
+        <div className={`absolute bottom-2 ${isSmallCta ? 'right-1' : 'right-2'} z-10`}>
           {isOutOfStock ? (
             <div className={`${controlMinWidth} ${controlHeight} flex items-center justify-center rounded-[0.95rem] border border-slate-300 bg-slate-100 px-3 ${controlText} font-black uppercase tracking-tight text-slate-500 shadow-sm`}>
               Out
