@@ -205,6 +205,14 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                       )}
                     </div>
 
+                    {/* Desktop: show a description preview without scrolling */}
+                    <div className="hidden md:block mb-6">
+                      <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Description</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-4">
+                        {isLoadingDetails ? 'Loading…' : (descriptionText || 'Not available')}
+                      </p>
+                    </div>
+
                     {/* Add to Cart CTA */}
                     <div className="mt-auto pt-6 border-t border-slate-100 dark:border-slate-800">
                       {isOutOfStock ? (
