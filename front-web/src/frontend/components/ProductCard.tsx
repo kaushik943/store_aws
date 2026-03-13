@@ -32,7 +32,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const controlMinWidth = compact ? 'min-w-[80px]' : 'min-w-[98px]';
   const qtyMinWidth = compact ? 'min-w-[86px]' : 'min-w-[104px]';
   const controlText = compact ? 'text-[9px]' : 'text-[10px]';
-  const addText = compact ? 'text-[10px]' : 'text-[11px]';
+  const addText = compact ? 'text-[11px]' : 'text-[11px]';
+  const addControlHeight = compact ? 'h-10' : controlHeight;
+  const addControlMinWidth = compact ? 'min-w-[92px]' : controlMinWidth;
   const stepBtnWidth = compact ? 'w-7' : 'w-8';
   const stepIconSize = compact ? 10 : 11;
   const qtyText = compact ? 'text-[10px]' : 'text-[11px]';
@@ -96,7 +98,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           ) : (
             <button
               onClick={(e) => { e.stopPropagation(); addToCart(product); }}
-              className={`${controlMinWidth} ${controlHeight} flex items-center justify-center rounded-[0.95rem] border-2 border-[#ff1493] bg-white px-3 ${addText} font-black uppercase tracking-wide text-[#ff1493] shadow-sm transition-all hover:bg-[#ff1493] hover:text-white active:scale-95`}
+              className={`${addControlMinWidth} ${addControlHeight} flex items-center justify-center rounded-[0.95rem] border-2 border-[#ff1493] bg-white px-4 ${addText} font-black uppercase tracking-wide text-[#ff1493] shadow-sm transition-all hover:bg-[#ff1493] hover:text-white active:scale-95`}
             >
               ADD
             </button>
