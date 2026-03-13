@@ -51,7 +51,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
           {discount > 0 && !isOutOfStock && (
             <span className={`bg-[#187a31] text-white ${badgeText} font-black px-2 py-1 rounded-lg shadow-sm uppercase`}>
-              ₹{savings} OFF
+              {"\u20B9"}{savings} OFF
             </span>
           )}
           {isOutOfStock && (
