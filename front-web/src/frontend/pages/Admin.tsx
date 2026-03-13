@@ -119,6 +119,15 @@ export const Admin: React.FC<AdminProps> = ({ user, setView, products, categorie
     localStorage.setItem('adminTab', activeTab);
   }, [activeTab]);
 
+  // Ensure Admin > Products always shows the full catalog (App state may still be filtered by a previously selected category).
+  useEffect(() => {
+    if (activeTab === 'products') {
+      fetchProducts();
+    }
+    // Intentionally depend only on tab change to avoid refetch loops if fetchProducts identity changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
   const handleInlineUpdate = async (productId: number, data: any) => {
     try {
       const res = await fetch(`/api/admin/products/${productId}/inline`, {
