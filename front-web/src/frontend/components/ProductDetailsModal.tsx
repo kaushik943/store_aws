@@ -21,6 +21,8 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<'details' | 'reviews'>('details');
+  const [fullProduct, setFullProduct] = useState<Product | null>(null);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
 
   useEffect(() => {
     if (product && isOpen) {
@@ -32,6 +34,35 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     }
     return () => { document.body.style.overflow = ''; };
   }, [product, isOpen]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchDetails = async () => {
+      if (!product || !isOpen) {
+        setFullProduct(null);
+        return;
+      }
+      setIsLoadingDetails(true);
+      try {
+        const res = await fetch(`/api/products/${product.id}`);
+        if (!res.ok) {
+          if (!cancelled) setFullProduct(null);
+          return;
+        }
+        const data = await res.json();
+        if (!cancelled) setFullProduct(data);
+      } catch (e) {
+        console.error(e);
+        if (!cancelled) setFullProduct(null);
+      } finally {
+        if (!cancelled) setIsLoadingDetails(false);
+      }
+    };
+
+    fetchDetails();
+    return () => { cancelled = true; };
+  }, [product?.id, isOpen]);
 
   const fetchReviews = async () => {
     if (!product) return;
@@ -57,11 +88,13 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
 
   if (!product) return null;
 
-  const isOutOfStock = product.out_of_stock || (product.stock !== undefined && product.stock <= 0);
-  const discount = product.mrp && product.mrp > product.price
-    ? Math.round(((product.mrp - product.price) / product.mrp) * 100)
+  const shownProduct = fullProduct || product;
+
+  const isOutOfStock = shownProduct.out_of_stock || (shownProduct.stock !== undefined && shownProduct.stock <= 0);
+  const discount = shownProduct.mrp && shownProduct.mrp > shownProduct.price
+    ? Math.round(((shownProduct.mrp - shownProduct.price) / shownProduct.mrp) * 100)
     : 0;
-  const descriptionText = (product.description || '').trim();
+  const descriptionText = (shownProduct.description || '').trim();
 
   const avgRating = reviews.length > 0
     ? (reviews.reduce((a, b) => a + b.rating, 0) / reviews.length).toFixed(1)
@@ -109,8 +142,8 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                   <div className="w-full md:w-[45%] lg:w-1/2 shrink-0">
                     <div className="relative rounded-3xl overflow-hidden bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700/50 p-6 md:p-10 flex items-center justify-center aspect-square">
                       <img
-                        src={product.image}
-                        alt={product.name}
+                        src={shownProduct.image}
+                        alt={shownProduct.name}
                         className={`w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal hover:scale-105 transition-transform duration-500 ${isOutOfStock ? 'grayscale opacity-60' : ''}`}
                         referrerPolicy="no-referrer"
                       />
@@ -129,13 +162,13 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
 
                   <div className="flex flex-col flex-1 py-2">
                     <div className="flex flex-wrap gap-2 mb-4">
-                      {product.brand && (
+                      {shownProduct.brand && (
                         <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-800">
-                          {product.brand}
+                          {shownProduct.brand}
                         </span>
                       )}
                       <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg">
-                        {product.unit}
+                        {shownProduct.unit}
                       </span>
                       {isOutOfStock ? (
                         <span className="text-[10px] font-black uppercase tracking-widest text-rose-600 bg-rose-50 dark:bg-rose-900/20 px-3 py-1.5 rounded-lg border border-rose-100 dark:border-rose-800">
@@ -149,24 +182,24 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                     </div>
 
                     <h2 className="text-2xl md:text-3xl lg:text-4xl font-black text-slate-900 dark:text-white leading-tight mb-3">
-                      {product.name}
+                      {shownProduct.name}
                     </h2>
 
-                    {product.catch && (
+                    {shownProduct.catch && (
                       <p className="text-sm md:text-base text-emerald-600 dark:text-emerald-400 font-bold italic mb-6">
-                        "{product.catch}"
+                        "{shownProduct.catch}"
                       </p>
                     )}
 
                     <div className="flex items-end gap-3 mb-6">
                       <span className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tighter">
-                        ₹{product.price}
+                        {"\u20B9"}{shownProduct.price}
                       </span>
-                      {product.mrp && product.mrp > product.price && (
+                      {shownProduct.mrp && shownProduct.mrp > shownProduct.price && (
                         <div className="flex flex-col pb-1">
-                          <span className="text-lg md:text-xl text-slate-400 line-through font-semibold">₹{product.mrp}</span>
+                          <span className="text-lg md:text-xl text-slate-400 line-through font-semibold">{"\u20B9"}{shownProduct.mrp}</span>
                           <span className="text-[10px] md:text-xs text-emerald-600 font-black uppercase tracking-wide">
-                            Save ₹{(product.mrp - product.price).toFixed(0)}
+                            Save {"\u20B9"}{(shownProduct.mrp - shownProduct.price).toFixed(0)}
                           </span>
                         </div>
                       )}
@@ -181,17 +214,17 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                       ) : cartItem && cartItem.quantity > 0 ? (
                         <div className="flex items-center gap-4">
                           <div className="flex items-center bg-emerald-600 text-white rounded-2xl overflow-hidden shadow-xl shadow-emerald-500/20">
-                            <button onClick={() => removeFromCart(product.id)} className="w-12 h-12 md:w-14 md:h-14 flex items-center justify-center hover:bg-emerald-700 transition-colors">
+                            <button onClick={() => removeFromCart(shownProduct.id)} className="w-12 h-12 md:w-14 md:h-14 flex items-center justify-center hover:bg-emerald-700 transition-colors">
                               <Minus size={18} strokeWidth={3} />
                             </button>
                             <span className="w-10 md:w-12 text-center font-black text-lg md:text-xl">{cartItem.quantity}</span>
-                            <button onClick={() => addToCart(product)} className="w-12 h-12 md:w-14 md:h-14 flex items-center justify-center hover:bg-emerald-700 transition-colors">
+                            <button onClick={() => addToCart(shownProduct)} className="w-12 h-12 md:w-14 md:h-14 flex items-center justify-center hover:bg-emerald-700 transition-colors">
                               <Plus size={18} strokeWidth={3} />
                             </button>
                           </div>
                           <div className="flex flex-col hidden sm:flex">
                             <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total</span>
-                            <span className="text-lg md:text-xl font-black text-emerald-600">₹{(product.price * cartItem.quantity).toFixed(0)}</span>
+                            <span className="text-lg md:text-xl font-black text-emerald-600">{"\u20B9"}{(shownProduct.price * cartItem.quantity).toFixed(0)}</span>
                           </div>
                           <button
                             onClick={() => { onClose(); window.dispatchEvent(new Event('openCart')); }}
@@ -202,7 +235,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                         </div>
                       ) : (
                         <button
-                          onClick={() => addToCart(product)}
+                          onClick={() => addToCart(shownProduct)}
                           className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 md:py-5 rounded-2xl font-black text-base uppercase tracking-widest shadow-xl shadow-emerald-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                         >
                           <Plus size={24} strokeWidth={3} /> Add to Cart
@@ -233,14 +266,14 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                     <div className="space-y-2">
                       <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Description</h3>
                       <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                        {descriptionText || 'Not available'}
+                        {isLoadingDetails ? 'Loading…' : (descriptionText || 'Not available')}
                       </p>
                     </div>
-                    {product.highlights && (
+                    {shownProduct.highlights && (
                       <div className="space-y-2">
                         <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Key Highlights</h3>
                         <ul className="space-y-2">
-                          {product.highlights.split('\n').filter(h => h.trim()).map((h, i) => (
+                          {shownProduct.highlights.split('\n').filter(h => h.trim()).map((h, i) => (
                             <li key={i} className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400">
                               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
                               {h.trim()}
@@ -249,18 +282,18 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                         </ul>
                       </div>
                     )}
-                    {(product.mfg_date || product.country_of_origin) && (
+                    {(shownProduct.mfg_date || shownProduct.country_of_origin) && (
                       <div className="grid grid-cols-2 gap-3 bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl">
-                        {product.mfg_date && (
+                        {shownProduct.mfg_date && (
                           <div>
                             <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1">Best Before</p>
-                            <p className="text-sm font-bold dark:text-white">{product.mfg_date}</p>
+                            <p className="text-sm font-bold dark:text-white">{shownProduct.mfg_date}</p>
                           </div>
                         )}
-                        {product.country_of_origin && (
+                        {shownProduct.country_of_origin && (
                           <div>
                             <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1">Origin</p>
-                            <p className="text-sm font-bold dark:text-white">{product.country_of_origin}</p>
+                            <p className="text-sm font-bold dark:text-white">{shownProduct.country_of_origin}</p>
                           </div>
                         )}
                       </div>

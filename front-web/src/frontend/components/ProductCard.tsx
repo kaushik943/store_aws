@@ -73,7 +73,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         </div>
 
         {/* Keep controls inside the image box so they don't overlap the name/unit area (tap should open details). */}
-        <div className="absolute bottom-2 right-2 z-10">
+        <div className="absolute bottom-2 right-1 z-10">
           {isOutOfStock ? (
             <div className={`${controlMinWidth} ${controlHeight} flex items-center justify-center rounded-[0.95rem] border border-slate-300 bg-slate-100 px-3 ${controlText} font-black uppercase tracking-tight text-slate-500 shadow-sm`}>
               Out

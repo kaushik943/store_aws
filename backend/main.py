@@ -412,6 +412,14 @@ def search_products(q: str = ""):
         products = [p for p in products if q.lower() in p.get("name", "").lower()]
     return products
 
+
+@app.get("/api/products/{product_id}")
+def get_product_details(product_id: int):
+    product = get_product(product_id)
+    if not product:
+        return JSONResponse(status_code=404, content={"error": "Product not found"})
+    return product
+
 @app.post("/api/admin/products")
 def add_product(prod: schemas.ProductCreate, admin: dict = Depends(get_current_admin)):
     product_data = prod.dict()
