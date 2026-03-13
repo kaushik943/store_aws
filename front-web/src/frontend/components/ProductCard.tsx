@@ -22,14 +22,20 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     : 0;
   const isOutOfStock = product.out_of_stock || (product.stock !== undefined && product.stock <= 0);
   const unitRaw = typeof (product as any)?.unit === 'string' ? (product as any).unit.trim() : '';
-  const unitText = unitRaw && unitRaw.toLowerCase() !== 'na' ? unitRaw : 'NA';
+  const hasUnit = unitRaw.length > 0;
+  const unitText = unitRaw.toLowerCase() === 'na' ? 'NA' : unitRaw;
   const imagePadding = compact ? 'p-1.5' : 'p-2';
   const nameClass = compact ? 'text-[11px] leading-[1.22]' : 'text-[12px] leading-[1.24]';
   const unitClass = compact ? 'text-[10px]' : 'text-[11px]';
   const pricePillClass = compact ? 'text-[13px] px-3 py-1.5' : 'text-[14px] px-3 py-1.5';
-  const controlHeight = compact ? 'h-10' : 'h-11';
-  const controlMinWidth = compact ? 'min-w-[92px]' : 'min-w-[98px]';
-  const qtyMinWidth = compact ? 'min-w-[98px]' : 'min-w-[104px]';
+  const controlHeight = compact ? 'h-9' : 'h-11';
+  const controlMinWidth = compact ? 'min-w-[80px]' : 'min-w-[98px]';
+  const qtyMinWidth = compact ? 'min-w-[86px]' : 'min-w-[104px]';
+  const controlText = compact ? 'text-[9px]' : 'text-[10px]';
+  const addText = compact ? 'text-[10px]' : 'text-[11px]';
+  const stepBtnWidth = compact ? 'w-7' : 'w-8';
+  const stepIconSize = compact ? 10 : 11;
+  const qtyText = compact ? 'text-[10px]' : 'text-[11px]';
   const badgeText = compact ? 'text-[8px]' : 'text-[9px]';
   const savings = product.mrp && product.mrp > product.price ? Math.round(product.mrp - product.price) : 0;
   const imageSrc = product.image || 'https://placehold.co/300x300/f3f4f6/9ca3af?text=Product';
@@ -65,7 +71,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         {/* Keep controls inside the image box so they don't overlap the name/unit area (tap should open details). */}
         <div className="absolute bottom-2 right-2 z-10">
           {isOutOfStock ? (
-            <div className={`${controlMinWidth} ${controlHeight} flex items-center justify-center rounded-[0.95rem] border border-slate-300 bg-slate-100 px-3 text-[10px] font-black uppercase tracking-tight text-slate-500 shadow-sm`}>
+            <div className={`${controlMinWidth} ${controlHeight} flex items-center justify-center rounded-[0.95rem] border border-slate-300 bg-slate-100 px-3 ${controlText} font-black uppercase tracking-tight text-slate-500 shadow-sm`}>
               Out
             </div>
           ) : cartItem && cartItem.quantity > 0 ? (
@@ -75,22 +81,22 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             >
               <button
                 onClick={(e) => { e.stopPropagation(); removeFromCart(product.id); }}
-                className={`flex w-8 items-center justify-center ${controlHeight} transition-colors hover:bg-[#e11d63]`}
+                className={`flex ${stepBtnWidth} items-center justify-center ${controlHeight} transition-colors hover:bg-[#e11d63]`}
               >
-                <Minus size={11} strokeWidth={3} />
+                <Minus size={stepIconSize} strokeWidth={3} />
               </button>
-              <span className="min-w-[20px] text-center text-[11px] font-black">{cartItem.quantity}</span>
+              <span className={`min-w-[18px] text-center ${qtyText} font-black`}>{cartItem.quantity}</span>
               <button
                 onClick={(e) => { e.stopPropagation(); addToCart(product); }}
-                className={`flex w-8 items-center justify-center ${controlHeight} transition-colors hover:bg-[#e11d63]`}
+                className={`flex ${stepBtnWidth} items-center justify-center ${controlHeight} transition-colors hover:bg-[#e11d63]`}
               >
-                <Plus size={11} strokeWidth={3} />
+                <Plus size={stepIconSize} strokeWidth={3} />
               </button>
             </div>
           ) : (
             <button
               onClick={(e) => { e.stopPropagation(); addToCart(product); }}
-              className={`${controlMinWidth} ${controlHeight} flex items-center justify-center rounded-[0.95rem] border-2 border-[#ff1493] bg-white px-4 text-[11px] font-black uppercase tracking-wide text-[#ff1493] shadow-sm transition-all hover:bg-[#ff1493] hover:text-white active:scale-95`}
+              className={`${controlMinWidth} ${controlHeight} flex items-center justify-center rounded-[0.95rem] border-2 border-[#ff1493] bg-white px-3 ${addText} font-black uppercase tracking-wide text-[#ff1493] shadow-sm transition-all hover:bg-[#ff1493] hover:text-white active:scale-95`}
             >
               ADD
             </button>
@@ -112,9 +118,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           {product.name}
         </h4>
 
-        <p className={`mt-0.5 ${unitClass} font-medium text-slate-500 dark:text-slate-300 line-clamp-1`}>
-          {unitText}
-        </p>
+        {hasUnit && (
+          <p className={`mt-0.5 ${unitClass} font-medium text-slate-500 dark:text-slate-300 line-clamp-1`}>
+            {unitText}
+          </p>
+        )}
       </div>
     </div>
   );
