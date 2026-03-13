@@ -21,7 +21,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     ? Math.round(((product.mrp - product.price) / product.mrp) * 100)
     : 0;
   const isOutOfStock = product.out_of_stock || (product.stock !== undefined && product.stock <= 0);
-  const showUnit = Boolean(product.unit && product.unit.trim() && product.unit.trim().toLowerCase() !== 'na');
+  const unitRaw = typeof (product as any)?.unit === 'string' ? (product as any).unit.trim() : '';
+  const unitText = unitRaw && unitRaw.toLowerCase() !== 'na' ? unitRaw : 'NA';
   const imagePadding = compact ? 'p-1.5' : 'p-2';
   const nameClass = compact ? 'text-[11px] leading-[1.22]' : 'text-[12px] leading-[1.24]';
   const unitClass = compact ? 'text-[10px]' : 'text-[11px]';
@@ -61,7 +62,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           )}
         </div>
 
-        <div className="absolute -bottom-3 right-2 z-10">
+        {/* Keep controls inside the image box so they don't overlap the name/unit area (tap should open details). */}
+        <div className="absolute bottom-2 right-2 z-10">
           {isOutOfStock ? (
             <div className={`${controlMinWidth} ${controlHeight} flex items-center justify-center rounded-[0.95rem] border border-slate-300 bg-slate-100 px-3 text-[10px] font-black uppercase tracking-tight text-slate-500 shadow-sm`}>
               Out
@@ -106,15 +108,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           )}
         </div>
 
-        <h4 className={`${nameClass} mt-2 overflow-hidden font-semibold text-slate-900 line-clamp-2`}>
+        <h4 className={`${nameClass} mt-2 overflow-hidden font-semibold text-slate-900 dark:text-slate-100 line-clamp-2`}>
           {product.name}
         </h4>
 
-        {showUnit && (
-          <p className={`mt-0.5 ${unitClass} font-medium text-slate-500 line-clamp-1`}>
-            {product.unit}
-          </p>
-        )}
+        <p className={`mt-0.5 ${unitClass} font-medium text-slate-500 dark:text-slate-300 line-clamp-1`}>
+          {unitText}
+        </p>
       </div>
     </div>
   );
