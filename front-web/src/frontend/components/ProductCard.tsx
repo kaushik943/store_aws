@@ -24,6 +24,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const showUnit = Boolean(product.unit && product.unit.trim() && product.unit.trim().toLowerCase() !== 'na');
   const imagePadding = compact ? 'p-1.5' : 'p-2';
   const nameClass = compact ? 'text-[11px] leading-[1.22]' : 'text-[12px] leading-[1.24]';
+  const unitClass = compact ? 'text-[10px]' : 'text-[11px]';
   const pricePillClass = compact ? 'text-[13px] px-3 py-1.5' : 'text-[14px] px-3 py-1.5';
   const controlHeight = compact ? 'h-10' : 'h-11';
   const controlMinWidth = compact ? 'min-w-[92px]' : 'min-w-[98px]';
@@ -105,12 +106,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           )}
         </div>
 
-        <h4 className={`${nameClass} mt-2.5 min-h-[3.35rem] overflow-hidden font-semibold text-slate-900 line-clamp-3`}>
+        <h4 className={`${nameClass} mt-2 overflow-hidden font-semibold text-slate-900 line-clamp-2`}>
           {product.name}
         </h4>
 
         {showUnit && (
-          <p className="mt-1 text-[11px] font-medium text-slate-500 line-clamp-1">
+          <p className={`mt-0.5 ${unitClass} font-medium text-slate-500 line-clamp-1`}>
             {product.unit}
           </p>
         )}
