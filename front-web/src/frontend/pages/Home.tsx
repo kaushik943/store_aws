@@ -477,6 +477,15 @@ export const Home: React.FC<HomeProps> = ({
     return (
       <main className="flex-1 min-w-0" ref={contentRef}>
         {renderCategoryView()}
+        <ProductDetailsModal
+          isOpen={selectedProductForModal !== null}
+          onClose={() => setSelectedProductForModal(null)}
+          product={selectedProductForModal}
+          cartItem={selectedProductForModal ? cart.find(item => item.id === selectedProductForModal.id) : undefined}
+          addToCart={addToCart}
+          removeFromCart={removeFromCart}
+          user={user}
+        />
       </main>
     );
   }
